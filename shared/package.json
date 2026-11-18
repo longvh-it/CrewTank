@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     "./types": "./types.ts",
-    "./constants": "./constants.ts"
+    "./constants": "./constants.ts",
+    "./physics": "./physics.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

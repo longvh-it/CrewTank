@@ -5,10 +5,12 @@ export const CLIENT_DEV_PORT = 5173;
 
 // Network / loop (docs/ARCHITECTURE.md)
 export const TICK_HZ = 30;
-export const SNAPSHOT_EVERY_TICKS = 2; // 30 Hz / 2 ≈ 20 Hz broadcast
+export const SNAPSHOT_HZ = 20; // independent timer: 30 Hz ticks cannot divide evenly into 20 Hz
 export const INPUT_SEND_HZ = 30;
 export const MAX_INPUTS_PER_SEC = 40;
 export const INTERP_DELAY_MS = 100;
+export const INTERP_BUFFER_SIZE = 30; // snapshots kept (~1.5 s at 20 Hz)
+export const CLOCK_SYNC_SMOOTHING = 0.1; // EMA weight for the server-clock offset estimate
 export const RECONNECT_GRACE_SEC = 30;
 
 // Rooms
@@ -24,6 +26,10 @@ export const MAP_COLS = 40;
 export const MAP_ROWS = 24;
 export const WORLD_WIDTH = MAP_COLS * TILE_SIZE;
 export const WORLD_HEIGHT = MAP_ROWS * TILE_SIZE;
+
+// Temporary spawning (step 3): tanks appear on a ring around the map centre until step 4 adds map spawns
+export const TEMP_SPAWN_RING_RADIUS = 120;
+export const TEMP_SPAWN_SLOTS = 8;
 
 // Placeholder tank graphics (until Kenney sprites in step 11)
 export const TANK_BODY_LENGTH = 40;

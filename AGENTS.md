@@ -7,7 +7,7 @@ Tài liệu viết bằng tiếng Việt; trả lời nhóm bằng tiếng Việ
 
 ## Kiến trúc & luồng dữ liệu
 - **Server là nguồn quyết định duy nhất.** Client chỉ gửi `PlayerInput` (`game:input`, 30 lần/s). Không bao giờ gửi vị trí, máu hay việc trúng đạn từ client.
-- Server: mô phỏng ở `TICK_HZ` (30), phát `GameSnapshot` qua `game:state` sau mỗi `SNAPSHOT_EVERY_TICKS` tick; sự kiện rời rạc `game:event` (hit/kill/explode/pickup) gửi ngay. Lưu ý: tài liệu ghi "mỗi 2 tick ≈ 20 Hz" nhưng 30/2 = 15 Hz — cần chốt trước bước 3.
+- Server: mô phỏng ở `TICK_HZ` (30), phát `GameSnapshot` qua `game:state` bằng timer riêng ở `SNAPSHOT_HZ` (20); sự kiện rời rạc `game:event` (hit/kill/explode/pickup) gửi ngay.
 - Client vẽ trễ `INTERP_DELAY_MS` (100 ms) so với hiện tại, nội suy tuyến tính vị trí và nội suy góc theo cung ngắn nhất (dự kiến ở `client/src/game/Interpolator.ts`).
 - Thứ tự một tick: input (`move` chỉ từ ghế lái, `aim` chỉ từ ghế pháo thủ) → di chuyển + va chạm tường/xe → sinh đạn/di chuyển đạn theo bước nhỏ (≤ `BULLET_MAX_SUBSTEP` = 8 px) → trúng đạn/máu/lượt hạ/hồi sinh/vật phẩm → kiểm tra thắng → snapshot.
 - Socket.IO có kiểu ở cả hai phía, generic lấy từ `shared/types.ts`:
