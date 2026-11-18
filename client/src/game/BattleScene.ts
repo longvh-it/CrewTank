@@ -9,6 +9,8 @@ import {
   WORLD_HEIGHT,
   WORLD_WIDTH,
 } from '@crew-tanks/shared/constants';
+import type { MapData } from '@crew-tanks/shared/map';
+import { isSolid } from '@crew-tanks/shared/map';
 import type { GameSnapshot, TankState } from '@crew-tanks/shared/types';
 import type { GameSocket } from '../net/socket';
 import { InputController } from './InputController';
@@ -16,6 +18,8 @@ import { Interpolator } from './Interpolator';
 
 const OWN_COLOR = 0x2980b9;
 const OTHER_COLOR = 0xc0392b;
+const WALL_COLOR = 0x5d5d5d;
+const WALL_EDGE_COLOR = 0x3a3a3a;
 
 interface TankView {
   body: Phaser.GameObjects.Rectangle;
@@ -32,15 +36,33 @@ export class BattleScene extends Phaser.Scene {
   private readonly views = new Map<string, TankView>();
   private readonly onState = (s: GameSnapshot): void => this.interpolator.push(s, Date.now());
 
-  constructor(private readonly socket: GameSocket) {
+  constructor(
+    private readonly socket: GameSocket,
+    private readonly map: MapData,
+  ) {
     super('battle');
   }
 
   create(): void {
+    this.drawWalls();
     this.input$ = new InputController(this);
     this.socket.on('game:state', this.onState);
     this.time.addEvent({ delay: 1000 / INPUT_SEND_HZ, loop: true, callback: () => this.sendInput() });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.socket.off('game:state', this.onState));
+  }
+
+  private drawWalls(): void {
+    const { grid } = this.map;
+    const g = this.add.graphics();
+    g.fillStyle(WALL_COLOR, 1).lineStyle(1, WALL_EDGE_COLOR, 1);
+    for (let row = 0; row < grid.rows; row++) {
+      for (let col = 0; col < grid.cols; col++) {
+        if (!isSolid(grid, col, row)) continue;
+        g.fillRect(col * grid.tileSize, row * grid.tileSize, grid.tileSize, grid.tileSize);
+        g.strokeRect(col * grid.tileSize, row * grid.tileSize, grid.tileSize, grid.tileSize);
+      }
+    }
+    g.setDepth(-1);
   }
 
   private sendInput(): void {

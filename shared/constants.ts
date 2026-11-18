@@ -27,10 +27,6 @@ export const MAP_ROWS = 24;
 export const WORLD_WIDTH = MAP_COLS * TILE_SIZE;
 export const WORLD_HEIGHT = MAP_ROWS * TILE_SIZE;
 
-// Temporary spawning (step 3): tanks appear on a ring around the map centre until step 4 adds map spawns
-export const TEMP_SPAWN_RING_RADIUS = 120;
-export const TEMP_SPAWN_SLOTS = 8;
-
 // Placeholder tank graphics (until Kenney sprites in step 11)
 export const TANK_BODY_LENGTH = 40;
 export const TANK_BODY_WIDTH = 30;
