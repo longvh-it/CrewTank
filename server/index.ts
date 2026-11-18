@@ -17,6 +17,9 @@ const io = new Server<ClientToServer, ServerToClient>(httpServer);
 // Production: serve the built client.
 const clientDist = fileURLToPath(new URL('../client/dist', import.meta.url));
 if (existsSync(clientDist)) app.use(express.static(clientDist));
+app.get('/healthz', (_req, res) => {
+  res.type('text/plain').send('ok');
+});
 
 const maps = new Map<string, MapData>();
 function loadMap(mapId: string): MapData {
@@ -41,13 +44,14 @@ const rooms = new RoomManager(
         },
         end: (result) => {
           io.to(code).emit('game:end', result);
-          const state = rooms.finish(code);
+          const state = rooms.finish(code, result);
           if (state) io.to(code).emit('lobby:state', state);
         },
       },
       loadMap(settings.mapId),
       { killLimit: settings.killLimit, timeLimitSec: settings.timeLimitSec },
     ),
+  (state) => io.to(state.code).emit('lobby:state', state),
 );
 
 io.on('connection', (socket) => {
@@ -74,6 +78,8 @@ io.on('connection', (socket) => {
     void socket.join(validCode);
     ack({ ok: true });
     io.to(validCode).emit('lobby:state', state);
+    const result = rooms.resultOf(validCode);
+    if (state.phase === 'ended' && result) socket.emit('game:end', result); // reconnected at the scoreboard
   });
   const publish = (state: LobbyState | null) => {
     if (state) io.to(state.code).emit('lobby:state', state);
@@ -106,6 +112,9 @@ io.on('connection', (socket) => {
   socket.on('lobby:return', () => {
     if (roomCode) publish(rooms.returnToLobby(roomCode, socket.id));
   });
+  socket.on('net:ping', (ack) => {
+    if (typeof ack === 'function') ack();
+  });
   const limiter = new RateLimiter();
   socket.on('game:input', (payload) => {
     if (!roomCode || !limiter.allow(Date.now())) return;
@@ -116,7 +125,7 @@ io.on('connection', (socket) => {
   });
   socket.on('disconnect', (reason) => {
     if (roomCode) {
-      const state = rooms.leave(roomCode, socket.id);
+      const state = rooms.disconnect(roomCode, socket.id);
       if (state) io.to(roomCode).emit('lobby:state', state);
     }
     console.log(`disconnected ${socket.id} (${reason})`);

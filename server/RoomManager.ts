@@ -1,34 +1,63 @@
 import { randomInt } from 'node:crypto';
-import { DEFAULT_KILL_LIMIT, DEFAULT_MAP_ID, DEFAULT_TIME_LIMIT_SEC, EMPTY_ROOM_TTL_SEC, ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH } from '@crew-tanks/shared/constants';
+import { DEFAULT_KILL_LIMIT, DEFAULT_MAP_ID, DEFAULT_TIME_LIMIT_SEC, EMPTY_ROOM_TTL_SEC, RECONNECT_GRACE_SEC, ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH } from '@crew-tanks/shared/constants';
 import { fillUnseated, matchTanks, normalizeTanks, seatPlayer, unseatPlayer } from '@crew-tanks/shared/lobby';
 import { autoBalance } from '@crew-tanks/shared/teams';
-import type { LobbySettings, LobbyState, PlayerInfo, Seat } from '@crew-tanks/shared/types';
+import type { LobbySettings, LobbyState, MatchResult, PlayerInfo, PlayerInput, Seat } from '@crew-tanks/shared/types';
 import type { Game } from './Game';
 
 export function generateRoomCode(): string {
   return Array.from({ length: ROOM_CODE_LENGTH }, () => ROOM_CODE_ALPHABET[randomInt(ROOM_CODE_ALPHABET.length)]).join('');
 }
 
-type Room = { state: LobbyState; sockets: Map<string, string>; game?: Game; cleanup?: NodeJS.Timeout };
+type Room = {
+  state: LobbyState;
+  sockets: Map<string, string>;
+  /** Players who lost their connection: seat kept until the timer fires (RECONNECT_GRACE_SEC). */
+  grace: Map<string, NodeJS.Timeout>;
+  game?: Game;
+  result?: MatchResult;
+  cleanup?: NodeJS.Timeout;
+};
+
+const NEUTRAL_INPUT: PlayerInput = { seq: 0, swap: false };
 
 export class RoomManager {
   private readonly rooms = new Map<string, Room>();
 
-  constructor(private readonly createGame: (code: string, settings: LobbySettings) => Game) {}
+  /** `onChange` fires when the manager changes a room on its own (a disconnected player's grace period ended). */
+  constructor(
+    private readonly createGame: (code: string, settings: LobbySettings) => Game,
+    private readonly onChange: (state: LobbyState) => void = () => {},
+  ) {}
 
   /** `createGame(code, settings)` builds a game wired to that room's socket.io channel. */
   create(name: string, playerId: string, socketId: string): LobbyState {
     let code: string;
     do { code = generateRoomCode(); } while (this.rooms.has(code));
     const state: LobbyState = { code, phase: 'lobby', players: [], tanks: normalizeTanks([]), settings: { killLimit: DEFAULT_KILL_LIMIT, timeLimitSec: DEFAULT_TIME_LIMIT_SEC, mapId: DEFAULT_MAP_ID } };
-    this.rooms.set(code, { state, sockets: new Map() });
+    this.rooms.set(code, { state, sockets: new Map(), grace: new Map() });
     this.join(code, name, playerId, socketId);
     return state;
   }
 
+  /**
+   * New players only join in the lobby. A known `playerId` whose connection dropped can come back
+   * at any phase within the grace period and gets the same seat (F5 mid-match).
+   */
   join(code: string, name: string, playerId: string, socketId: string): LobbyState | null {
     const room = this.rooms.get(code);
-    if (!room || room.state.phase !== 'lobby' || room.sockets.has(playerId) || [...room.sockets.values()].includes(socketId)) return null;
+    if (!room || [...room.sockets.values()].includes(socketId)) return null;
+    const existing = room.state.players.find(p => p.id === playerId);
+    if (existing) {
+      if (existing.connected) return null; // already in the room on another connection
+      const timer = room.grace.get(playerId);
+      if (timer) clearTimeout(timer);
+      room.grace.delete(playerId);
+      existing.connected = true;
+      room.sockets.set(playerId, socketId);
+      return room.state;
+    }
+    if (room.state.phase !== 'lobby') return null;
     if (room.cleanup) { clearTimeout(room.cleanup); delete room.cleanup; }
     const player: PlayerInfo = { id: playerId, name, team: null, tankId: null, seat: null, isHost: room.state.players.length === 0, connected: true };
     room.state.players.push(player);
@@ -36,13 +65,34 @@ export class RoomManager {
     return room.state;
   }
 
-  leave(code: string, socketId: string): LobbyState | null {
+  /**
+   * The connection dropped: keep the player's seat for RECONNECT_GRACE_SEC (marked disconnected,
+   * their controls go neutral), then remove them for good.
+   */
+  disconnect(code: string, socketId: string): LobbyState | null {
     const room = this.rooms.get(code);
-    if (!room) return null;
-    const entry = [...room.sockets].find(([, id]) => id === socketId);
-    if (!entry) return null;
-    room.sockets.delete(entry[0]);
-    const leaving = entry[0];
+    const entry = room && [...room.sockets].find(([, id]) => id === socketId);
+    const player = entry && room.state.players.find(p => p.id === entry[0]);
+    if (!room || !entry || !player) return null;
+    const playerId = entry[0];
+    const seat = this.seatOf(code, socketId);
+    room.sockets.delete(playerId);
+    player.connected = false;
+    if (seat) room.game?.setInput(seat.tankId, seat.seat, NEUTRAL_INPUT);
+    room.grace.set(playerId, setTimeout(() => {
+      room.grace.delete(playerId);
+      const state = this.remove(code, playerId);
+      if (state) this.onChange(state);
+    }, RECONNECT_GRACE_SEC * 1000));
+    return room.state;
+  }
+
+  /** Remove a player for good (grace period over). Hands the host role on and tidies seats and tanks. */
+  remove(code: string, playerId: string): LobbyState | null {
+    const room = this.rooms.get(code);
+    if (!room || !room.state.players.some(p => p.id === playerId)) return null;
+    room.sockets.delete(playerId);
+    const leaving = playerId;
     room.state.players = room.state.players.filter(player => player.id !== leaving);
     if (room.state.phase === 'lobby') {
       room.state.tanks = unseatPlayer(room.state.players, room.state.tanks, leaving).tanks;
@@ -64,6 +114,9 @@ export class RoomManager {
     }
     return room.state;
   }
+
+  /** Result of the last match, so a player who reconnects at the scoreboard can still see it. */
+  resultOf(code: string): MatchResult | undefined { return this.rooms.get(code)?.result; }
 
   gameOf(code: string): Game | undefined { return this.rooms.get(code)?.game; }
 
@@ -154,9 +207,10 @@ export class RoomManager {
   }
 
   /** Called when the room's game reports a finished match. */
-  finish(code: string): LobbyState | null {
+  finish(code: string, result: MatchResult): LobbyState | null {
     const room = this.rooms.get(code);
     if (!room || room.state.phase !== 'playing') return null;
+    room.result = result;
     room.game?.stop();
     room.state.phase = 'ended';
     return room.state;

@@ -20,6 +20,8 @@ const MUTE_KEY = 'crew-tanks-muted';
 
 interface Store {
   muted: boolean;
+  ping: number | null;
+  setPing: (ms: number | null) => void;
   setMuted: (muted: boolean) => void;
   lobby: LobbyState | null;
   hud: HudState;
@@ -48,6 +50,10 @@ let killId = 0;
 
 export const useStore = create<Store>((set, get) => ({
   muted: localStorage.getItem(MUTE_KEY) === '1',
+  ping: null,
+  setPing: (ms) => {
+    if (get().ping !== ms) set({ ping: ms });
+  },
   setMuted: (muted) => {
     localStorage.setItem(MUTE_KEY, muted ? '1' : '0');
     set({ muted });

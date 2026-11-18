@@ -93,6 +93,7 @@ export interface ClientToServer {
   'lobby:start': () => void;                                                   // chỉ chủ phòng
   'lobby:return': () => void;                                                  // chỉ chủ phòng, sau game:end: về sảnh chờ giữ đội/ghế
   'game:input': (input: PlayerInput) => void;
+  'net:ping': (ack: () => void) => void;                                       // đo ping: server gọi ack ngay
 }
 
 export interface ServerToClient {
