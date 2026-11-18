@@ -1,13 +1,17 @@
 import Phaser from 'phaser';
-import { BULLET_RADIUS, PICKUP_RADIUS } from '@crew-tanks/shared/constants';
-import type { AmmoKind, GameSnapshot, PickupState } from '@crew-tanks/shared/types';
+import {
+  BULLET_SPRITE_SCALE,
+  EXPLOSION_FRAMES,
+  EXPLOSION_FRAME_MS,
+  EXPLOSION_SPRITE_PX,
+  PICKUP_RADIUS,
+  SFX_VOLUME,
+  SPRITE_FACING_OFFSET,
+} from '@crew-tanks/shared/constants';
+import type { GameSnapshot, PickupState } from '@crew-tanks/shared/types';
+import { useStore } from '../store';
+import { SOUND, TEXTURE } from './assets';
 
-const BULLET_COLORS: Record<AmmoKind, number> = {
-  normal: 0xf1c40f,
-  piercing: 0x9b59b6,
-  explosive: 0xe67e22,
-  smoke: 0xbdc3c7,
-};
 const PICKUP_COLORS: Record<PickupState['kind'], number> = {
   normal: 0xffffff,
   explosive: 0xe67e22,
@@ -16,14 +20,18 @@ const PICKUP_COLORS: Record<PickupState['kind'], number> = {
   repair: 0x2ecc71,
 };
 const PICKUP_LETTER: Record<PickupState['kind'], string> = { normal: '', explosive: 'E', piercing: 'P', smoke: 'S', repair: '+' };
-const EXPLOSION_MS = 350;
-const SMOKE_COLOR = 0xcfd8dc;
+const SMOKE_ALPHA = 0.85;
 
-/** Bullets, pickups, smoke clouds and explosion flashes, kept in sync with each rendered snapshot. */
+/** Plays a sound unless the player muted the game. */
+export function playSfx(scene: Phaser.Scene, key: string): void {
+  if (!useStore.getState().muted) scene.sound.play(key, { volume: SFX_VOLUME });
+}
+
+/** Bullets, pickups, smoke clouds and explosions, kept in sync with each rendered snapshot. */
 export class WorldView {
-  private readonly bullets = new Map<string, Phaser.GameObjects.Arc>();
+  private readonly bullets = new Map<string, Phaser.GameObjects.Image>();
   private readonly pickups = new Map<string, { dot: Phaser.GameObjects.Arc; label: Phaser.GameObjects.Text }>();
-  private readonly smokes = new Map<string, Phaser.GameObjects.Arc>();
+  private readonly smokes = new Map<string, Phaser.GameObjects.Image>();
 
   constructor(private readonly scene: Phaser.Scene) {}
 
@@ -33,27 +41,41 @@ export class WorldView {
     this.syncSmokes(snap);
   }
 
-  /** Expanding ring where a shell went off. */
+  /** Animated blast of the given radius (Kenney smoke frames), centred on (x, y). */
   explode(x: number, y: number, r: number): void {
-    const ring = this.scene.add.circle(x, y, r * 0.2, 0xff9f43, 0.6).setDepth(5);
-    this.scene.tweens.add({ targets: ring, radius: r, alpha: 0, duration: EXPLOSION_MS, onComplete: () => ring.destroy() });
+    const sprite = this.scene.add.image(x, y, TEXTURE.explosion(0)).setDepth(5);
+    sprite.setScale((r * 2) / EXPLOSION_SPRITE_PX);
+    let frame = 0;
+    this.scene.time.addEvent({
+      delay: EXPLOSION_FRAME_MS,
+      repeat: EXPLOSION_FRAMES - 1,
+      callback: () => {
+        frame += 1;
+        if (frame >= EXPLOSION_FRAMES) sprite.destroy();
+        else sprite.setTexture(TEXTURE.explosion(frame));
+      },
+    });
   }
 
   private syncBullets(snap: GameSnapshot): void {
     const seen = new Set<string>();
     for (const b of snap.bullets) {
       seen.add(b.id);
-      const v = this.bullets.get(b.id) ?? this.scene.add.circle(b.x, b.y, BULLET_RADIUS, BULLET_COLORS[b.kind]);
+      let v = this.bullets.get(b.id);
+      if (!v) {
+        v = this.scene.add.image(b.x, b.y, TEXTURE.bullet(b.kind)).setScale(BULLET_SPRITE_SCALE);
+        this.bullets.set(b.id, v);
+        playSfx(this.scene, SOUND.fire);
+      } else if (Math.hypot(b.x - v.x, b.y - v.y) > 0.1) {
+        v.setRotation(Math.atan2(b.y - v.y, b.x - v.x) + SPRITE_FACING_OFFSET);
+      }
       v.setPosition(b.x, b.y);
-      this.bullets.set(b.id, v);
     }
     this.prune(this.bullets, seen);
   }
 
   private syncPickups(snap: GameSnapshot): void {
-    const seen = new Set<string>();
     for (const p of snap.pickups) {
-      seen.add(p.id);
       let view = this.pickups.get(p.id);
       if (!view) {
         const dot = this.scene.add.circle(p.x, p.y, PICKUP_RADIUS, PICKUP_COLORS[p.kind]).setStrokeStyle(2, 0xffffff).setDepth(-0.5);
@@ -73,13 +95,16 @@ export class WorldView {
     const seen = new Set<string>();
     for (const s of snap.smokes) {
       seen.add(s.id);
-      const v = this.smokes.get(s.id) ?? this.scene.add.circle(s.x, s.y, s.r, SMOKE_COLOR, 0.55).setDepth(4);
-      this.smokes.set(s.id, v);
+      if (!this.smokes.has(s.id)) {
+        const cloud = this.scene.add.image(s.x, s.y, TEXTURE.smoke).setDepth(4).setAlpha(SMOKE_ALPHA);
+        cloud.setScale((s.r * 2) / EXPLOSION_SPRITE_PX);
+        this.smokes.set(s.id, cloud);
+      }
     }
     this.prune(this.smokes, seen);
   }
 
-  private prune(views: Map<string, Phaser.GameObjects.Arc>, seen: Set<string>): void {
+  private prune(views: Map<string, Phaser.GameObjects.Image>, seen: Set<string>): void {
     for (const [id, v] of views) {
       if (seen.has(id)) continue;
       v.destroy();

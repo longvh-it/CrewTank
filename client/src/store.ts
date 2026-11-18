@@ -16,7 +16,11 @@ export interface KillFeedEntry {
   killerTeam: TeamId;
 }
 
+const MUTE_KEY = 'crew-tanks-muted';
+
 interface Store {
+  muted: boolean;
+  setMuted: (muted: boolean) => void;
   lobby: LobbyState | null;
   hud: HudState;
   score: Record<TeamId, number>;
@@ -43,6 +47,11 @@ const FRESH_MATCH = {
 let killId = 0;
 
 export const useStore = create<Store>((set, get) => ({
+  muted: localStorage.getItem(MUTE_KEY) === '1',
+  setMuted: (muted) => {
+    localStorage.setItem(MUTE_KEY, muted ? '1' : '0');
+    set({ muted });
+  },
   lobby: null,
   ...FRESH_MATCH,
   setLobby: (lobby) => {

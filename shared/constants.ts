@@ -28,12 +28,20 @@ export const MAP_ROWS = 24;
 export const WORLD_WIDTH = MAP_COLS * TILE_SIZE;
 export const WORLD_HEIGHT = MAP_ROWS * TILE_SIZE;
 
-// Placeholder tank graphics (until Kenney sprites in step 11)
-export const TANK_BODY_LENGTH = 40;
-export const TANK_BODY_WIDTH = 30;
-export const TURRET_RADIUS = 9;
-export const BARREL_LENGTH = 26;
-export const BARREL_WIDTH = 6;
+// Sprites (Kenney Topdown Tanks, drawn facing up) and effects
+export const BARREL_LENGTH = 26; // muzzle distance from the tank centre (bullets spawn here)
+export const TANK_SPRITE_SCALE = 0.5; // 75x70 source -> ~38x35 px body
+export const BARREL_SPRITE_SCALE = 0.5; // 16x50 source -> 8x25 px barrel
+export const BARREL_PIVOT_Y = 0.9; // barrel rotates about a point near its base
+export const BULLET_SPRITE_SCALE = 0.5;
+export const SPRITE_FACING_OFFSET = Math.PI / 2; // sprites face up, game angle 0 = east
+export const EXPLOSION_FRAMES = 6;
+export const EXPLOSION_FRAME_MS = 60;
+export const EXPLOSION_SPRITE_PX = 87; // source frame size
+export const KILL_EXPLOSION_RADIUS = 40;
+export const HIT_SHAKE_MS = 150;
+export const HIT_SHAKE_INTENSITY = 0.01;
+export const SFX_VOLUME = 0.35;
 
 // Tank stats by crew size
 export interface TankStats {
@@ -104,7 +112,7 @@ export const DEFAULT_TIME_LIMIT_SEC = 8 * 60;
 export const TIME_LIMIT_MIN_SEC = 3 * 60;
 export const TIME_LIMIT_MAX_SEC = 15 * 60;
 export const DEFAULT_MAP_ID = 'arena-01';
-export const AVAILABLE_MAP_IDS: readonly string[] = ['arena-01']; // arena-02 arrives in step 11
+export const AVAILABLE_MAP_IDS: readonly string[] = ['arena-01', 'arena-02'];
 export const MAX_TANKS_PER_TEAM = 4; // 8 players max, 2 per tank, 2 teams
 
 // Awards (MVP score)

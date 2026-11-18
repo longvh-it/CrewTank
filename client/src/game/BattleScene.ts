@@ -1,16 +1,18 @@
 import Phaser from 'phaser';
 import {
-  BARREL_LENGTH,
-  BARREL_WIDTH,
+  BARREL_PIVOT_Y,
+  BARREL_SPRITE_SCALE,
   HIT_FLASH_MS,
+  HIT_SHAKE_INTENSITY,
+  HIT_SHAKE_MS,
+  KILL_EXPLOSION_RADIUS,
+  SPRITE_FACING_OFFSET,
+  TANK_SPRITE_SCALE,
   HP_BAR_HEIGHT,
   HP_BAR_OFFSET_Y,
   HP_BAR_WIDTH,
   INVULNERABLE_BLINK_MS,
   INPUT_SEND_HZ,
-  TANK_BODY_LENGTH,
-  TANK_BODY_WIDTH,
-  TURRET_RADIUS,
   WORLD_HEIGHT,
   WORLD_WIDTH,
 } from '@crew-tanks/shared/constants';
@@ -20,24 +22,24 @@ import type { GameEvent, GameSnapshot, TankState } from '@crew-tanks/shared/type
 import type { GameSocket } from '../net/socket';
 import { InputController } from './InputController';
 import { Interpolator } from './Interpolator';
-import { WorldView } from './WorldView';
+import { playSfx, WorldView } from './WorldView';
+import { preloadAssets, SOUND, TEXTURE } from './assets';
 import { hiddenBySmoke } from '@crew-tanks/shared/specials';
 import { inputForRole, type CrewRole } from './inputRole';
 import { tankLabel } from '../crew';
 import { useStore } from '../store';
 
-const OWN_COLOR = 0x2980b9;
-const OTHER_COLOR = 0xc0392b;
-const FLASH_COLOR = 0xffffff;
+const OWN_MARKER_RADIUS = 24;
 const HP_COLOR = 0x2ecc71;
 const WALL_COLOR = 0x5d5d5d;
 const WALL_EDGE_COLOR = 0x3a3a3a;
 
 interface TankView {
-  body: Phaser.GameObjects.Rectangle;
-  turret: Phaser.GameObjects.Container;
+  body: Phaser.GameObjects.Image;
+  turret: Phaser.GameObjects.Image;
   hpBar: Phaser.GameObjects.Graphics;
-  baseColor: number;
+  /** White ring under your own tank. */
+  marker: Phaser.GameObjects.Arc | null;
   flashUntil: number;
 }
 
@@ -60,15 +62,24 @@ export class BattleScene extends Phaser.Scene {
       if (lobby && killerTeam) {
         pushKill({ killer: tankLabel(lobby, e.killerTankId), victim: tankLabel(lobby, e.victimTankId), killerTeam });
       }
+      const victim = this.views.get(e.victimTankId);
+      if (victim) this.world.explode(victim.body.x, victim.body.y, KILL_EXPLOSION_RADIUS);
+      playSfx(this, SOUND.kill);
       return;
     }
     if (e.type === 'explode') {
       this.world.explode(e.x, e.y, e.r);
+      playSfx(this, SOUND.explosion);
+      return;
+    }
+    if (e.type === 'pickup') {
+      if (e.tankId === this.ownTankId) playSfx(this, SOUND.pickup);
       return;
     }
     if (e.type !== 'hit') return;
     const view = this.views.get(e.tankId);
     if (view) view.flashUntil = Date.now() + HIT_FLASH_MS;
+    if (e.tankId === this.ownTankId) this.cameras.main.shake(HIT_SHAKE_MS, HIT_SHAKE_INTENSITY);
   };
 
   constructor(
@@ -86,7 +97,12 @@ export class BattleScene extends Phaser.Scene {
     this.role = role;
   }
 
+  preload(): void {
+    preloadAssets(this.load);
+  }
+
   create(): void {
+    this.add.tileSprite(0, 0, WORLD_WIDTH, WORLD_HEIGHT, TEXTURE.grass).setOrigin(0).setDepth(-2);
     this.drawWalls();
     this.world = new WorldView(this);
     this.input$ = new InputController(this);
@@ -139,18 +155,22 @@ export class BattleScene extends Phaser.Scene {
       view.body.destroy();
       view.turret.destroy();
       view.hpBar.destroy();
+      view.marker?.destroy();
       this.views.delete(id);
     }
     this.world.update(snap);
   }
 
   private createView(tank: TankState): TankView {
-    const color = tank.id === this.ownTankId ? OWN_COLOR : OTHER_COLOR;
-    const body = this.add.rectangle(tank.x, tank.y, TANK_BODY_LENGTH, TANK_BODY_WIDTH, color).setStrokeStyle(2, 0x000000);
-    const barrel = this.add.rectangle(0, 0, BARREL_LENGTH, BARREL_WIDTH, 0x2c3e50).setOrigin(0, 0.5);
-    const dome = this.add.circle(0, 0, TURRET_RADIUS, 0x7f8c8d).setStrokeStyle(2, 0x000000);
-    const turret = this.add.container(tank.x, tank.y, [barrel, dome]);
-    const view: TankView = { body, turret, hpBar: this.add.graphics(), baseColor: color, flashUntil: 0 };
+    const own = tank.id === this.ownTankId;
+    const body = this.add.image(tank.x, tank.y, TEXTURE.tank(tank.team)).setScale(TANK_SPRITE_SCALE);
+    const marker = own ? this.add.circle(tank.x, tank.y, OWN_MARKER_RADIUS).setStrokeStyle(2, 0xffffff, 0.9).setDepth(-0.1) : null;
+    const turret = this.add
+      .image(tank.x, tank.y, TEXTURE.barrel(tank.team))
+      .setScale(BARREL_SPRITE_SCALE)
+      .setOrigin(0.5, BARREL_PIVOT_Y)
+      .setDepth(1);
+    const view: TankView = { body, turret, hpBar: this.add.graphics().setDepth(2), marker, flashUntil: 0 };
     this.views.set(tank.id, view);
     return view;
   }
@@ -160,10 +180,18 @@ export class BattleScene extends Phaser.Scene {
     view.body.setVisible(visible);
     view.turret.setVisible(visible);
     view.hpBar.setVisible(visible);
+    view.marker?.setVisible(visible);
     if (!visible) return;
-    view.body.setPosition(tank.x, tank.y).setRotation(tank.bodyAngle);
-    view.body.setFillStyle(now < view.flashUntil ? FLASH_COLOR : view.baseColor);
-    view.turret.setPosition(tank.x, tank.y).setRotation(tank.turretAngle);
+    view.marker?.setPosition(tank.x, tank.y);
+    view.body.setPosition(tank.x, tank.y).setRotation(tank.bodyAngle + SPRITE_FACING_OFFSET);
+    view.turret.setPosition(tank.x, tank.y).setRotation(tank.turretAngle + SPRITE_FACING_OFFSET);
+    if (now < view.flashUntil) {
+      view.body.setTintFill(0xffffff);
+      view.turret.setTintFill(0xffffff);
+    } else {
+      view.body.clearTint();
+      view.turret.clearTint();
+    }
     const blink = now < tank.invulnerableUntil && Math.floor(now / INVULNERABLE_BLINK_MS) % 2 === 0;
     const alpha = blink ? 0.4 : 1;
     view.body.setAlpha(alpha);
