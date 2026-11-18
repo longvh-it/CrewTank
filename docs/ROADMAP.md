@@ -17,7 +17,7 @@ Test nhiều người chơi bằng 2 cửa sổ trình duyệt trở lên (một
 | 6b | Phòng theo mã: thay phòng toàn cục | đã xong | 3, 6a | 2 |
 | 7a | Chia đội: `shared/teams.ts` + test | đã xong | 1 | 1 |
 | 7b | Sảnh chờ: giao diện, ghế, bắt đầu trận | đã xong | 6b, 7a | 2 |
-| 8 | Tách người lái / pháo thủ | longvh-it | 5, 7 | 2 |
+| 8 | Tách người lái / pháo thủ | đã xong | 5, 7 | 2 |
 | 9 | Team Deathmatch + bảng xếp hạng | — | 5, 7 | 3 |
 | 10 | Đạn đặc biệt, tăng tốc, sửa xe, đổi ghế | — | 8 | 3 |
 | 11 | Hình ảnh, hiệu ứng, âm thanh, map thứ hai | — | 9 | 3 |
@@ -88,7 +88,7 @@ Việc chuẩn bị không phụ thuộc bước nào, ai chưa nhận được 
   - `lobby:start` → `game:start` cho mọi người; xe xuất hiện theo các `TankSlot` trong sảnh chờ.
   - **Hoàn thành khi:** test pass; với 4 cửa sổ trở lên, bấm Bắt đầu đưa mọi người vào trận với đúng các xe đã hiện trong sảnh chờ.
 
-- [ ] **Bước 8 — Tách người lái / pháo thủ** · Người nhận: longvh-it
+- [x] **Bước 8 — Tách người lái / pháo thủ** · Người nhận: đã xong
   - Server chỉ nhận `move` từ ghế lái và chỉ nhận `aim` từ ghế pháo thủ; xe 1 người nhận cả hai từ người chơi duy nhất.
   - Áp dụng chỉ số xe 2 người từ constants (máu, tốc độ xoay tháp pháo, thời gian nạp đạn).
   - Input phía client: người lái chỉ gửi `move`, pháo thủ chỉ gửi `aim`. HUD hiện "Bạn là NGƯỜI LÁI/PHÁO THỦ" và tên đồng đội cùng xe.

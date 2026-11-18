@@ -137,3 +137,48 @@ describe('Game crews', () => {
     expect(tankOf(game, 'duo').turretAngle).toBeGreaterThan(turretBefore);
   });
 });
+
+describe('2-crew vs 1-crew stats', () => {
+  const driveRight = (): PlayerInput => ({ seq: 1, move: { throttle: 1, turn: 0, boost: false, repair: false }, swap: false });
+  const aimDown: PlayerInput = { seq: 1, aim: { angle: -Math.PI / 2, fire: false, special: false }, swap: false };
+
+  it('speed: solo 160 px/s, duo 150 px/s', () => {
+    const { game } = setup();
+    game.addTank({ id: 'solo', team: 'red', crew: 1 });
+    game.addTank({ id: 'duo', team: 'blue', crew: 2 });
+    game.teleport('solo', 200, 100);
+    game.teleport('duo', 300, 100);
+    game.setInput('solo', 'driver', driveRight());
+    game.setInput('duo', 'driver', driveRight());
+    game.tick(0.1, 1000);
+    expect(tankOf(game, 'solo').x - 200).toBeCloseTo(TANK_STATS[1].speed * 0.1, 3);
+    expect(Math.abs(tankOf(game, 'duo').x - 300)).toBeCloseTo(TANK_STATS[2].speed * 0.1, 3);
+  });
+
+  it('turret turn speed: solo 180 deg/s, duo 270 deg/s', () => {
+    const { game } = setup();
+    game.addTank({ id: 'solo', team: 'red', crew: 1 });
+    game.addTank({ id: 'duo', team: 'blue', crew: 2 });
+    game.setInput('solo', 'driver', aimDown);
+    game.setInput('duo', 'gunner', aimDown);
+    const a0 = { solo: tankOf(game, 'solo').turretAngle, duo: tankOf(game, 'duo').turretAngle };
+    game.tick(0.1, 1000);
+    const turned = (id: 'solo' | 'duo') => Math.abs(Math.atan2(Math.sin(tankOf(game, id).turretAngle - a0[id]), Math.cos(tankOf(game, id).turretAngle - a0[id])));
+    expect(turned('solo')).toBeCloseTo((TANK_STATS[1].turretTurnSpeed * Math.PI) / 180 * 0.1, 4);
+    expect(turned('duo')).toBeCloseTo((TANK_STATS[2].turretTurnSpeed * Math.PI) / 180 * 0.1, 4);
+  });
+
+  it('reload: solo 0.8 s, duo 0.6 s', () => {
+    const { game } = setup();
+    game.addTank({ id: 'solo', team: 'red', crew: 1 });
+    game.addTank({ id: 'duo', team: 'blue', crew: 2 });
+    game.teleport('solo', 200, 100);
+    game.teleport('duo', 1000, 600);
+    const fireUp = (angle: number): PlayerInput => ({ seq: 1, aim: { angle, fire: true, special: false }, swap: false });
+    game.setInput('solo', 'driver', fireUp(-Math.PI / 2));
+    game.setInput('duo', 'gunner', fireUp(-Math.PI / 2));
+    // at 0.7 s: solo (0.8 s reload) fired once, duo (0.6 s reload) fired twice (t=0 and t=0.6)
+    for (let t = 0; t <= 700; t += 10) game.tick(0.01, 1000 + t);
+    expect(game.snapshot().bullets.length).toBe(1 + 2);
+  });
+});
