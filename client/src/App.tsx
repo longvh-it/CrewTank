@@ -3,6 +3,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { PLAYER_NAME_MAX_LENGTH, ROOM_CODE_LENGTH } from '@crew-tanks/shared/constants';
 import type { LobbyState } from '@crew-tanks/shared/types';
 import { createSocket, type GameSocket } from './net/socket';
+import { GameCanvas } from './game/GameCanvas';
 
 const PLAYER_ID_KEY = 'crew-tanks-player-id';
 function getPlayerId(): string {
@@ -56,8 +57,9 @@ export function App() {
       <h1>Crew Tanks</h1>
       {!connected && <p>Đang kết nối…</p>}
       {error && <p role="alert">{error}</p>}
+      {lobby && socket && <GameCanvas socket={socket} />}
       {lobby ? (
-        <section>
+        <section style={{ position: 'fixed', top: 8, left: 8, color: '#fff', zIndex: 1 }}>
           <h2>Phòng {lobby.code}</h2>
           <QRCodeSVG value={roomUrl} />
           <p><a href={roomUrl}>{roomUrl}</a></p>

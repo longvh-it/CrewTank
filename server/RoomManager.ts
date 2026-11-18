@@ -1,21 +1,27 @@
 import { randomInt } from 'node:crypto';
 import { DEFAULT_KILL_LIMIT, DEFAULT_MAP_ID, DEFAULT_TIME_LIMIT_SEC, EMPTY_ROOM_TTL_SEC, ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH } from '@crew-tanks/shared/constants';
 import type { LobbyState, PlayerInfo } from '@crew-tanks/shared/types';
+import type { Game } from './Game';
 
 export function generateRoomCode(): string {
   return Array.from({ length: ROOM_CODE_LENGTH }, () => ROOM_CODE_ALPHABET[randomInt(ROOM_CODE_ALPHABET.length)]).join('');
 }
 
-type Room = { state: LobbyState; sockets: Map<string, string>; cleanup?: NodeJS.Timeout };
+type Room = { state: LobbyState; sockets: Map<string, string>; game: Game; cleanup?: NodeJS.Timeout };
 
 export class RoomManager {
   private readonly rooms = new Map<string, Room>();
+
+  /** `createGame` builds the room's own game (wired to that room's socket.io channel). */
+  constructor(private readonly createGame: (code: string) => Game) {}
 
   create(name: string, playerId: string, socketId: string): LobbyState {
     let code: string;
     do { code = generateRoomCode(); } while (this.rooms.has(code));
     const state: LobbyState = { code, phase: 'lobby', players: [], tanks: [], settings: { killLimit: DEFAULT_KILL_LIMIT, timeLimitSec: DEFAULT_TIME_LIMIT_SEC, mapId: DEFAULT_MAP_ID } };
-    this.rooms.set(code, { state, sockets: new Map() });
+    const game = this.createGame(code);
+    game.start();
+    this.rooms.set(code, { state, sockets: new Map(), game });
     this.join(code, name, playerId, socketId);
     return state;
   }
@@ -38,12 +44,17 @@ export class RoomManager {
     room.sockets.delete(entry[0]);
     room.state.players = room.state.players.filter(player => player.id !== entry[0]);
     if (room.state.players.length === 0) {
-      room.cleanup = setTimeout(() => this.rooms.delete(code), EMPTY_ROOM_TTL_SEC * 1000);
+      room.cleanup = setTimeout(() => {
+        room.game.stop();
+        this.rooms.delete(code);
+      }, EMPTY_ROOM_TTL_SEC * 1000);
     } else if (!room.state.players.some(player => player.isHost)) {
       room.state.players[0]!.isHost = true;
     }
     return room.state;
   }
+
+  gameOf(code: string): Game | undefined { return this.rooms.get(code)?.game; }
 
   get(code: string): LobbyState | undefined { return this.rooms.get(code)?.state; }
 }
