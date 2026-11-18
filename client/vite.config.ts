@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     port: CLIENT_DEV_PORT,
     proxy: {
-      '/socket.io': { target: `http://localhost:${SERVER_PORT}`, ws: true },
+      '/socket.io': { target: `http://localhost:${process.env.PORT || SERVER_PORT}`, ws: true },
     },
   },
 });

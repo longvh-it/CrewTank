@@ -1,8 +1,20 @@
 import { z } from 'zod';
-import { MAX_INPUTS_PER_SEC } from '@crew-tanks/shared/constants';
+import { MAX_INPUTS_PER_SEC, PLAYER_NAME_MAX_LENGTH, ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH } from '@crew-tanks/shared/constants';
 import type { PlayerInput } from '@crew-tanks/shared/types';
 
 const axis = z.union([z.literal(-1), z.literal(0), z.literal(1)]);
+const roomPlayerSchema = z.object({ name: z.string().trim().min(1).max(PLAYER_NAME_MAX_LENGTH), playerId: z.string().uuid() });
+const roomCodeSchema = z.string().length(ROOM_CODE_LENGTH).refine(code => [...code].every(char => ROOM_CODE_ALPHABET.includes(char)));
+
+export function parseRoomPlayer(name: unknown, playerId: unknown) {
+  const result = roomPlayerSchema.safeParse({ name, playerId });
+  return result.success ? result.data : null;
+}
+
+export function parseRoomCode(code: unknown): string | null {
+  const result = roomCodeSchema.safeParse(code);
+  return result.success ? result.data : null;
+}
 
 const playerInputSchema = z.object({
   seq: z.number().int().nonnegative(),

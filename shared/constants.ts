@@ -17,6 +17,7 @@ export const RECONNECT_GRACE_SEC = 30;
 export const ROOM_CODE_LENGTH = 4;
 export const ROOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 export const EMPTY_ROOM_TTL_SEC = 5 * 60;
+export const PLAYER_NAME_MAX_LENGTH = 40;
 
 // Map / collision
 export const TILE_SIZE = 32;
