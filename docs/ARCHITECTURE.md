@@ -49,6 +49,7 @@ crew-tanks/
 │  ├─ constants.ts         # mọi con số có thể tinh chỉnh
 │  ├─ physics.ts           # hàm thuần: moveTank, stepBullet, collideTanks...
 │  ├─ teams.ts             # hàm thuần: autoBalance, luật chọn ghế
+│  ├─ lobby.ts             # hàm thuần: ngồi/rời ghế, xếp người chưa có chỗ, xe cho trận
 │  ├─ map.ts               # đọc Tiled JSON → lưới va chạm, điểm hồi sinh, vật phẩm
 │  └─ *.test.ts
 ├─ server/
