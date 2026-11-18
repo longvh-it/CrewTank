@@ -10,7 +10,7 @@ Test nhiều người chơi bằng 2 cửa sổ trình duyệt trở lên (một
 |---|---|---|---|---|
 | 1 | Khung repo | đã xong | — | 1 |
 | 2 | Phaser trong React | đã xong | 1 | 1 |
-| 3 | Di chuyển do server quyết định | longvh-it | 2 | 1 |
+| 3 | Di chuyển do server quyết định | đã xong | 2 | 1 |
 | 4 | Map + va chạm | — | 3 | 1 |
 | 5 | Bắn + máu + hồi sinh | — | 4 | 2 |
 | 6a | Phòng theo mã + QR: RoomManager, Trang chủ | — | 1 | 1 |
@@ -47,7 +47,7 @@ Việc chuẩn bị không phụ thuộc bước nào, ai chưa nhận được 
   - `InputController.ts` chuyển bàn phím/chuột thành `PlayerInput`.
   - **Hoàn thành khi:** xe chạy mượt, tháp pháo xoay độc lập, mount lại không tạo ra canvas thứ hai.
 
-- [ ] **Bước 3 — Di chuyển do server quyết định** · Người nhận: longvh-it
+- [x] **Bước 3 — Di chuyển do server quyết định** · Người nhận: đã xong
   - Client gửi `game:input` 30 lần/s; server chạy vòng lặp `Game.ts` ở 30 Hz dùng `shared/physics.ts` (`moveTank`), phát `GameSnapshot` ở 20 Hz.
   - `Interpolator.ts`: bộ đệm snapshot, vẽ ở thời điểm server − 100 ms, nội suy tuyến tính vị trí, nội suy góc theo cung ngắn nhất.
   - Tạm thời: mọi người vào chung một phòng toàn cục, mỗi người một xe 1 người.

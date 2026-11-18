@@ -5,6 +5,8 @@ import { fileURLToPath } from 'node:url';
 import { Server } from 'socket.io';
 import type { ClientToServer, ServerToClient } from '@crew-tanks/shared/types';
 import { SERVER_PORT } from '@crew-tanks/shared/constants';
+import { Game } from './Game';
+import { parsePlayerInput, RateLimiter } from './validate';
 
 const app = express();
 const httpServer = createServer(app);
@@ -14,9 +16,23 @@ const io = new Server<ClientToServer, ServerToClient>(httpServer);
 const clientDist = fileURLToPath(new URL('../client/dist', import.meta.url));
 if (existsSync(clientDist)) app.use(express.static(clientDist));
 
+const game = new Game(io);
+game.start();
+
 io.on('connection', (socket) => {
   console.log(`connected ${socket.id}`);
-  socket.on('disconnect', (reason) => console.log(`disconnected ${socket.id} (${reason})`));
+  game.addTank(socket.id);
+  const limiter = new RateLimiter();
+  socket.on('game:input', (payload) => {
+    if (!limiter.allow(Date.now())) return;
+    const input = parsePlayerInput(payload);
+    if (input) game.setInput(socket.id, input);
+    else if (process.env.NODE_ENV !== 'production') console.warn(`invalid game:input from ${socket.id}`);
+  });
+  socket.on('disconnect', (reason) => {
+    game.removeTank(socket.id);
+    console.log(`disconnected ${socket.id} (${reason})`);
+  });
 });
 
 const port = Number(process.env.PORT) || SERVER_PORT;

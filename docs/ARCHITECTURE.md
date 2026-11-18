@@ -19,7 +19,7 @@ Trình duyệt (client)                            Server (Node)
 ```
 
 - **Server là nguồn quyết định duy nhất.** Client chỉ gửi input. Server nắm vị trí, máu, trúng đạn, điểm số.
-- **Tick:** mô phỏng mỗi 33 ms (30 Hz); phát `game:state` tới cả phòng sau mỗi 2 tick (≈20 Hz).
+- **Tick:** mô phỏng mỗi 33 ms (30 Hz); phát `game:state` tới cả phòng bằng timer riêng ở `SNAPSHOT_HZ` = 20 Hz (30 Hz không chia hết cho 20 nên không đếm tick).
 - **Sự kiện rời rạc** (`game:event`: hit, kill, explode, pickup) được gửi ngay lập tức.
 - **Nội suy phía client:** giữ một bộ đệm snapshot, vẽ ở thời điểm `serverTime − 100 ms`, nội suy tuyến tính vị trí và góc (góc nội suy theo cung ngắn nhất).
 - **Đồng bộ thời gian server:** client ước lượng độ lệch từ `GameSnapshot.t` (trung bình trượt đơn giản).
@@ -32,7 +32,7 @@ Trình duyệt (client)                            Server (Node)
 3. Sinh đạn nếu đã nạp xong; di chuyển đạn theo bước nhỏ ≤ 8 px; bật khi chạm tường (đảo vận tốc theo trục va chạm).
 4. Xử lý trúng đạn → máu, thống kê, lượt hạ, hồi sinh, nhặt vật phẩm, vùng khói.
 5. Kiểm tra điều kiện thắng.
-6. Phát snapshot sau mỗi 2 tick.
+6. Snapshot phát độc lập bằng timer `SNAPSHOT_HZ` (20 Hz), lấy trạng thái tick gần nhất.
 
 ## Cấu trúc repo
 
