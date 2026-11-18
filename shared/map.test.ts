@@ -28,6 +28,14 @@ describe('parseTiledMap(arena-01)', () => {
       expect(TANK_RADIUS).toBeLessThanOrEqual(TILE_SIZE); // tank fits within neighbouring open tile
     }
   });
+  it('every pickup has a known kind and all four kinds appear', () => {
+    expect(new Set(arena.pickups.map((p) => p.kind))).toEqual(new Set(['explosive', 'piercing', 'smoke', 'repair']));
+  });
+  it('rejects a pickup with an unknown type', () => {
+    const bad = JSON.parse(readFileSync(new URL('../server/maps/arena-01.json', import.meta.url), 'utf8'));
+    bad.layers.find((l: { name: string }) => l.name === 'pickups').objects[0].type = 'laser';
+    expect(() => parseTiledMap(bad)).toThrow();
+  });
   it('rejects a map without the walls layer', () => {
     expect(() => parseTiledMap({ width: 1, height: 1, tilewidth: 32, layers: [] })).toThrow();
   });

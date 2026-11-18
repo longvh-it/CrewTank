@@ -11,8 +11,9 @@ const DT = 1 / TICK_HZ;
 function setup(options?: { killLimit: number; timeLimitSec: number }) {
   const events: GameEvent[] = [];
   const ends: MatchResult[] = [];
-  const game = new Game({ state: vi.fn(), event: (e: GameEvent) => events.push(e), end: (r: MatchResult) => ends.push(r) }, map, options);
-  return { game, events, ends };
+  const swaps: string[] = [];
+  const game = new Game({ state: vi.fn(), event: (e: GameEvent) => events.push(e), end: (r: MatchResult) => ends.push(r), swapped: (id: string) => swaps.push(id) }, map, options);
+  return { game, events, ends, swaps };
 }
 const aimFire = (angle: number, fire: boolean): PlayerInput => ({ seq: 1, aim: { angle, fire, special: false }, swap: false });
 const tankOf = (g: Game, id: string) => {
@@ -243,5 +244,147 @@ describe('Team Deathmatch', () => {
     timed.game.setInput('a', 'gunner', aimFire(-Math.PI / 2, false)); // nobody shoots anybody
     runUntil(timed.game, () => timed.ends.length > 0, 1000, 10_000);
     expect(timed.ends[0]).toMatchObject({ winner: null, score: { red: 0, blue: 0 } });
+  });
+});
+
+describe('Specials in the game', () => {
+  const duo = (g: Game, id: string, team: 'red' | 'blue', x: number, y: number) => {
+    g.addTank({ id, team, crew: 2, driverId: `${id}d`, gunnerId: `${id}g` });
+    g.teleport(id, x, y);
+  };
+  const driverMove = (over: Partial<NonNullable<PlayerInput['move']>> = {}): PlayerInput => ({
+    seq: 1, move: { throttle: 0, turn: 0, boost: false, repair: false, ...over }, swap: false,
+  });
+  const special = (angle: number): PlayerInput => ({ seq: 1, aim: { angle, fire: false, special: true }, swap: false });
+  const give = (g: Game, id: string, kind: 'explosive' | 'smoke' | 'piercing') => g.giveShells(id, kind, 3);
+
+  it('driving over a pickup collects it (duo gets shells, solo does not), then it respawns after 20 s', () => {
+    const { game, events } = setup();
+    const p = map.pickups.find((x) => x.kind === 'explosive')!;
+    duo(game, 'duo', 'red', p.x, p.y);
+    game.addTank({ id: 'solo', team: 'blue', crew: 1, driverId: null, gunnerId: null });
+    game.teleport('solo', p.x + 5, p.y);
+    game.tick(DT, 1000);
+    expect(events.find((e) => e.type === 'pickup')).toMatchObject({ tankId: 'duo', kind: 'explosive' });
+    expect(tankOf(game, 'duo')).toMatchObject({ specialKind: 'explosive', specialAmmo: 3 });
+    expect(tankOf(game, 'solo').specialAmmo).toBe(0);
+    expect(game.snapshot().pickups.find((x) => x.x === p.x && x.y === p.y)?.active).toBe(false);
+    game.teleport('solo', 10000, 10000);
+    game.tick(DT, 1000 + 19_900);
+    expect(game.snapshot().pickups.find((x) => x.x === p.x && x.y === p.y)?.active).toBe(false);
+    game.tick(DT, 1000 + 20_100);
+    expect(game.snapshot().pickups.find((x) => x.x === p.x && x.y === p.y)?.active).toBe(true);
+  });
+
+  it('repair kit heals a damaged solo tank', () => {
+    const { game } = setup();
+    const p = map.pickups.find((x) => x.kind === 'repair')!;
+    game.addTank({ id: 'solo', team: 'red', crew: 1, driverId: null, gunnerId: null, hpBonus: 0 });
+    game.teleport('solo', 100, 100);
+    game.damageForTest('solo', 70, 'other');
+    game.teleport('solo', p.x, p.y);
+    game.tick(DT, 1000);
+    expect(tankOf(game, 'solo').hp).toBe(100 - 70 + 40);
+  });
+
+  it('explosive shell: 30 damage to every enemy within 80 px, none to friends, event emitted', () => {
+    const { game, events } = setup();
+    duo(game, 'a', 'red', 300, 100);
+    game.addTank({ id: 'e1', team: 'blue', crew: 1, driverId: null, gunnerId: null });
+    game.addTank({ id: 'e2', team: 'blue', crew: 1, driverId: null, gunnerId: null });
+    game.addTank({ id: 'f', team: 'red', crew: 1, driverId: null, gunnerId: null });
+    game.teleport('e1', 500, 100);
+    game.teleport('e2', 500, 150); // 50 px from e1, inside the blast
+    game.teleport('f', 500, 130); // friend inside the blast
+    give(game, 'a', 'explosive');
+    game.setInput('a', 'gunner', special(0));
+    let now = 1000;
+    for (let i = 0; i < 40 && !events.some((e) => e.type === 'explode'); i++) game.tick(DT, (now += 33));
+    expect(events.some((e) => e.type === 'explode')).toBe(true);
+    expect(tankOf(game, 'e1').hp).toBe(100 - 30);
+    expect(tankOf(game, 'e2').hp).toBe(100 - 30);
+    expect(tankOf(game, 'f').hp).toBe(100);
+    expect(tankOf(game, 'a').specialAmmo).toBe(2);
+  });
+
+  it('piercing shell deals 40 and does not bounce off walls', () => {
+    const { game } = setup();
+    duo(game, 'a', 'red', 300, 100);
+    game.addTank({ id: 'e', team: 'blue', crew: 1, driverId: null, gunnerId: null });
+    game.teleport('e', 500, 100);
+    give(game, 'a', 'piercing');
+    game.setInput('a', 'gunner', special(0));
+    let now = 1000;
+    for (let i = 0; i < 40 && tankOf(game, 'e').hp === 100; i++) game.tick(DT, (now += 33));
+    expect(tankOf(game, 'e').hp).toBe(60);
+    // fire into a wall: gone after the first impact (a normal shell would still be flying after bouncing)
+    game.setInput('a', 'gunner', special(-Math.PI / 2));
+    for (let i = 0; i < 60; i++) game.tick(DT, (now += 33));
+    expect(game.snapshot().bullets.filter((b) => b.kind === 'piercing')).toHaveLength(0);
+  });
+
+  it('smoke shell creates a zone for 6 s', () => {
+    const { game } = setup();
+    duo(game, 'a', 'red', 300, 100);
+    give(game, 'a', 'smoke');
+    game.setInput('a', 'gunner', special(0));
+    let now = 1000;
+    for (let i = 0; i < 80 && game.snapshot().smokes.length === 0; i++) game.tick(DT, (now += 33));
+    const z = game.snapshot().smokes[0]!;
+    expect(z).toMatchObject({ r: 100 });
+    game.setInput('a', 'gunner', special(-Math.PI / 2 + 0.0)); // keep firing smoke elsewhere is irrelevant; check expiry
+    game.setInput('a', 'gunner', { seq: 2, aim: { angle: 0, fire: false, special: false }, swap: false });
+    game.tick(DT, z.endsAt + 1);
+    expect(game.snapshot().smokes.find((s) => s.id === z.id)).toBeUndefined();
+  });
+
+  it('boost: only duo tanks, 240 px/s for 1.5 s then 6 s cooldown', () => {
+    const { game } = setup();
+    duo(game, 'a', 'red', 400, 100);
+    game.addTank({ id: 's', team: 'blue', crew: 1, driverId: null, gunnerId: null });
+    game.teleport('s', 200, 300);
+    const boosted = driverMove({ throttle: 1, boost: true });
+    game.setInput('a', 'driver', boosted);
+    game.setInput('s', 'driver', boosted);
+    game.tick(0.1, 1000);
+    expect(tankOf(game, 'a').x - 400).toBeCloseTo(24, 3); // 240 px/s
+    expect(Math.abs(tankOf(game, 's').x - 200)).toBeCloseTo(16, 3); // solo: normal 160 px/s
+    expect(tankOf(game, 'a').boostReadyAt).toBe(1000 + 6000);
+    game.tick(0.1, 1000 + 1600); // boost over
+    const x0 = tankOf(game, 'a').x;
+    game.tick(0.1, 1000 + 1700);
+    expect(tankOf(game, 'a').x - x0).toBeCloseTo(15, 3); // 150 px/s duo normal speed
+  });
+
+  it('holding R while standing still repairs; moving cancels it', () => {
+    const { game } = setup();
+    duo(game, 'a', 'red', 400, 100);
+    game.damageForTest('a', 60, 'other');
+    game.setInput('a', 'driver', driverMove({ repair: true }));
+    game.tick(1, 1000);
+    expect(tankOf(game, 'a').hp).toBe(130 - 60 + 15);
+    game.setInput('a', 'driver', driverMove({ repair: true, throttle: 1 }));
+    game.tick(1, 2000);
+    expect(tankOf(game, 'a').hp).toBe(130 - 60 + 15);
+  });
+
+  it('both crew holding F for 0.5 s swap seats, the tank is frozen for 2 s, and a lone holder does nothing', () => {
+    const { game, swaps } = setup();
+    duo(game, 'a', 'red', 400, 100);
+    const hold = (f: boolean): PlayerInput => ({ seq: 1, move: { throttle: 1, turn: 0, boost: false, repair: false }, aim: { angle: 0, fire: false, special: false }, swap: f });
+    game.setInput('a', 'driver', hold(true));
+    let now = 1000;
+    for (let i = 0; i < 30; i++) game.tick(DT, (now += 33));
+    expect(swaps).toHaveLength(0);
+    game.setInput('a', 'gunner', hold(true));
+    for (let i = 0; i < 20 && swaps.length === 0; i++) game.tick(DT, (now += 33));
+    expect(swaps).toEqual(['a']);
+    const x0 = tankOf(game, 'a').x;
+    game.tick(DT, now + 1500); // still frozen (driver keeps pressing W)
+    expect(tankOf(game, 'a').x).toBe(x0);
+    game.setInput('a', 'driver', hold(false));
+    game.setInput('a', 'gunner', hold(false));
+    game.tick(DT, now + 2100);
+    expect(tankOf(game, 'a').x).toBeGreaterThan(x0);
   });
 });

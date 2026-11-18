@@ -2,7 +2,6 @@ import Phaser from 'phaser';
 import {
   BARREL_LENGTH,
   BARREL_WIDTH,
-  BULLET_RADIUS,
   HIT_FLASH_MS,
   HP_BAR_HEIGHT,
   HP_BAR_OFFSET_Y,
@@ -21,13 +20,14 @@ import type { GameEvent, GameSnapshot, TankState } from '@crew-tanks/shared/type
 import type { GameSocket } from '../net/socket';
 import { InputController } from './InputController';
 import { Interpolator } from './Interpolator';
+import { WorldView } from './WorldView';
+import { hiddenBySmoke } from '@crew-tanks/shared/specials';
 import { inputForRole, type CrewRole } from './inputRole';
 import { tankLabel } from '../crew';
 import { useStore } from '../store';
 
 const OWN_COLOR = 0x2980b9;
 const OTHER_COLOR = 0xc0392b;
-const BULLET_COLOR = 0xf1c40f;
 const FLASH_COLOR = 0xffffff;
 const HP_COLOR = 0x2ecc71;
 const WALL_COLOR = 0x5d5d5d;
@@ -49,7 +49,8 @@ export class BattleScene extends Phaser.Scene {
   private input$!: InputController;
   private readonly interpolator = new Interpolator();
   private readonly views = new Map<string, TankView>();
-  private readonly bulletViews = new Map<string, Phaser.GameObjects.Arc>();
+  private world!: WorldView;
+  private role: CrewRole;
   private readonly onState = (s: GameSnapshot): void => this.interpolator.push(s, Date.now());
 
   private readonly onEvent = (e: GameEvent): void => {
@@ -61,6 +62,10 @@ export class BattleScene extends Phaser.Scene {
       }
       return;
     }
+    if (e.type === 'explode') {
+      this.world.explode(e.x, e.y, e.r);
+      return;
+    }
     if (e.type !== 'hit') return;
     const view = this.views.get(e.tankId);
     if (view) view.flashUntil = Date.now() + HIT_FLASH_MS;
@@ -70,13 +75,20 @@ export class BattleScene extends Phaser.Scene {
     private readonly socket: GameSocket,
     private readonly map: MapData,
     private readonly ownTankId: string | null,
-    private readonly role: CrewRole,
+    role: CrewRole,
   ) {
     super('battle');
+    this.role = role;
+  }
+
+  /** Seats can be swapped mid-match (hold F): the new role applies without restarting the scene. */
+  setRole(role: CrewRole): void {
+    this.role = role;
   }
 
   create(): void {
     this.drawWalls();
+    this.world = new WorldView(this);
     this.input$ = new InputController(this);
     this.socket.on('game:state', this.onState);
     this.socket.on('game:event', this.onEvent);
@@ -115,10 +127,12 @@ export class BattleScene extends Phaser.Scene {
     store.setScore(snap.score.red, snap.score.blue);
     if (snap.endsAt > 0) store.setRemaining(Math.max(0, Math.ceil((snap.endsAt - snap.t) / 1000)));
     const seen = new Set<string>();
+    const ownTeam = snap.tanks.find((t) => t.id === this.ownTankId)?.team ?? null;
     for (const tank of snap.tanks) {
       seen.add(tank.id);
-      this.applyTank(this.views.get(tank.id) ?? this.createView(tank), tank, now);
-      if (tank.id === this.ownTankId) useStore.getState().setHp(tank.hp, tank.maxHp);
+      const hidden = hiddenBySmoke(ownTeam, tank, snap.smokes);
+      this.applyTank(this.views.get(tank.id) ?? this.createView(tank), tank, now, hidden);
+      if (tank.id === this.ownTankId) store.setOwn(tank.hp, tank.maxHp, tank.specialKind, tank.specialAmmo);
     }
     for (const [id, view] of this.views) {
       if (seen.has(id)) continue;
@@ -127,22 +141,7 @@ export class BattleScene extends Phaser.Scene {
       view.hpBar.destroy();
       this.views.delete(id);
     }
-    this.drawBullets(snap);
-  }
-
-  private drawBullets(snap: GameSnapshot): void {
-    const seen = new Set<string>();
-    for (const b of snap.bullets) {
-      seen.add(b.id);
-      const v = this.bulletViews.get(b.id) ?? this.add.circle(b.x, b.y, BULLET_RADIUS, BULLET_COLOR);
-      v.setPosition(b.x, b.y);
-      this.bulletViews.set(b.id, v);
-    }
-    for (const [id, v] of this.bulletViews) {
-      if (seen.has(id)) continue;
-      v.destroy();
-      this.bulletViews.delete(id);
-    }
+    this.world.update(snap);
   }
 
   private createView(tank: TankState): TankView {
@@ -156,8 +155,8 @@ export class BattleScene extends Phaser.Scene {
     return view;
   }
 
-  private applyTank(view: TankView, tank: TankState, now: number): void {
-    const visible = tank.alive;
+  private applyTank(view: TankView, tank: TankState, now: number, hidden: boolean): void {
+    const visible = tank.alive && !hidden;
     view.body.setVisible(visible);
     view.turret.setVisible(visible);
     view.hpBar.setVisible(visible);

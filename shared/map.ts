@@ -11,10 +11,17 @@ export interface CollisionGrid {
   solid: Uint8Array;
 }
 
+export type PickupKind = 'explosive' | 'piercing' | 'smoke' | 'repair';
+export const PICKUP_KINDS: readonly PickupKind[] = ['explosive', 'piercing', 'smoke', 'repair'];
+
+export interface PickupSpawn extends Point {
+  kind: PickupKind;
+}
+
 export interface MapData {
   grid: CollisionGrid;
   spawns: { red: Point[]; blue: Point[] };
-  pickups: Point[];
+  pickups: PickupSpawn[];
 }
 
 export function isSolid(grid: CollisionGrid, col: number, row: number): boolean {
@@ -40,12 +47,25 @@ function findLayer(layers: TiledLayer[], name: string, type: string): TiledLayer
   return layer;
 }
 
-function readPoints(layer: TiledLayer): Point[] {
+function readObjects(layer: TiledLayer): Record<string, unknown>[] {
   if (!Array.isArray(layer.objects)) throw new Error(`Invalid Tiled map: layer "${String(layer.name)}" has no objects`);
   return layer.objects.map((o: unknown) => {
     const r = asRecord(o, 'object');
     if (typeof r.x !== 'number' || typeof r.y !== 'number') throw new Error('Invalid Tiled map: object without x/y');
-    return { x: r.x, y: r.y };
+    return r;
+  });
+}
+
+function readPoints(layer: TiledLayer): Point[] {
+  return readObjects(layer).map((r) => ({ x: r.x as number, y: r.y as number }));
+}
+
+/** Pickup points carry their kind in the Tiled object `type` field. */
+function readPickups(layer: TiledLayer): PickupSpawn[] {
+  return readObjects(layer).map((r) => {
+    const kind = PICKUP_KINDS.find((k) => k === r.type);
+    if (!kind) throw new Error(`Invalid Tiled map: pickup with unknown type "${String(r.type)}"`);
+    return { x: r.x as number, y: r.y as number, kind };
   });
 }
 
@@ -79,6 +99,6 @@ export function parseTiledMap(json: unknown): MapData {
       red: readPoints(findLayer(layers, 'spawns_red', 'objectgroup')),
       blue: readPoints(findLayer(layers, 'spawns_blue', 'objectgroup')),
     },
-    pickups: readPoints(findLayer(layers, 'pickups', 'objectgroup')),
+    pickups: readPickups(findLayer(layers, 'pickups', 'objectgroup')),
   };
 }
