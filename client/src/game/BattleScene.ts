@@ -132,7 +132,12 @@ export class BattleScene extends Phaser.Scene {
   private sendInput(): void {
     const own = this.ownTankId ? this.views.get(this.ownTankId) : undefined;
     const origin = own ? { x: own.turret.x, y: own.turret.y } : { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 };
-    this.socket.emit('game:input', inputForRole(this.input$.read(origin), this.role));
+    const input = this.input$.read(origin);
+    // pause menu open: neutral input (no move, no fire, no swap); aim stays as is
+    const live = useStore.getState().paused
+      ? { seq: input.seq, swap: false, move: { throttle: 0 as const, turn: 0 as const, boost: false, repair: false }, aim: input.aim && { ...input.aim, fire: false, special: false } }
+      : input;
+    this.socket.emit('game:input', inputForRole(live, this.role));
   }
 
   override update(): void {

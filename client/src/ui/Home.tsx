@@ -23,26 +23,44 @@ export function Home({ socket, connected }: { socket: GameSocket | null; connect
     });
   }
 
+  const canJoin = connected && !!name.trim() && code.trim().length === ROOM_CODE_LENGTH;
   return (
-    <main style={{ padding: 16 }}>
-      <h1>Crew Tanks</h1>
-      {!connected && <p>Đang kết nối…</p>}
-      {error && <p role="alert">{error}</p>}
-      <section>
-        <label>
-          Tên <input value={name} maxLength={PLAYER_NAME_MAX_LENGTH} onChange={(e) => setName(e.target.value)} />
+    <main className="screen screen-center">
+      <div className="card home-card">
+        <h1 className="logo">
+          <span>Crew</span> <span>Tanks</span>
+        </h1>
+        <p className="tagline">Xe tăng 2D nhiều người chơi — lái và bắn cùng đồng đội</p>
+        {!connected && <p className="status">Đang kết nối…</p>}
+        {error && <p role="alert" className="alert">{error}</p>}
+        <label className="field">
+          Tên
+          <input
+            value={name}
+            maxLength={PLAYER_NAME_MAX_LENGTH}
+            placeholder="Nhập tên của bạn"
+            onChange={(e) => setName(e.target.value)}
+          />
         </label>
-        <button disabled={!connected || !name.trim()} onClick={createRoom}>
+        <button className="primary big" disabled={!connected || !name.trim()} onClick={createRoom}>
           Tạo phòng
         </button>
-        <label>
-          Mã phòng{' '}
-          <input value={code} maxLength={ROOM_CODE_LENGTH} onChange={(e) => setCode(e.target.value.toUpperCase())} />
+        <div className="divider">hoặc</div>
+        <label className="field">
+          Mã phòng
+          <div className="join-row">
+            <input
+              value={code}
+              maxLength={ROOM_CODE_LENGTH}
+              placeholder="ABCD"
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
+            />
+            <button disabled={!canJoin} onClick={joinRoom}>
+              Vào phòng
+            </button>
+          </div>
         </label>
-        <button disabled={!connected || !name.trim() || code.trim().length !== ROOM_CODE_LENGTH} onClick={joinRoom}>
-          Vào phòng
-        </button>
-      </section>
+      </div>
     </main>
   );
 }

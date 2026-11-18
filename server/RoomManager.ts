@@ -87,6 +87,16 @@ export class RoomManager {
     return room.state;
   }
 
+  /** The player chose to leave: no grace period, seat and tank are freed at once. */
+  leave(code: string, socketId: string): LobbyState | null {
+    const room = this.rooms.get(code);
+    const playerId = room && [...room.sockets].find(([, id]) => id === socketId)?.[0];
+    if (!room || !playerId) return null;
+    const seat = this.seatOf(code, socketId);
+    if (seat) room.game?.setInput(seat.tankId, seat.seat, NEUTRAL_INPUT);
+    return this.remove(code, playerId);
+  }
+
   /** Remove a player for good (grace period over). Hands the host role on and tidies seats and tanks. */
   remove(code: string, playerId: string): LobbyState | null {
     const room = this.rooms.get(code);

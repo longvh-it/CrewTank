@@ -84,6 +84,14 @@ io.on('connection', (socket) => {
   const publish = (state: LobbyState | null) => {
     if (state) io.to(state.code).emit('lobby:state', state);
   };
+  socket.on('room:leave', () => {
+    if (!roomCode) return;
+    const code = roomCode;
+    const state = rooms.leave(code, socket.id);
+    roomCode = null;
+    void socket.leave(code);
+    publish(state);
+  });
   socket.on('lobby:pickSeat', (tankId, seat) => {
     const pick = parseSeatPick(tankId, seat);
     if (roomCode && pick) publish(rooms.pickSeat(roomCode, socket.id, pick.tankId, pick.seat));

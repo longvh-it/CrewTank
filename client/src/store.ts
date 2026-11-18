@@ -20,6 +20,8 @@ const MUTE_KEY = 'crew-tanks-muted';
 
 interface Store {
   muted: boolean;
+  paused: boolean;
+  setPaused: (paused: boolean) => void;
   ping: number | null;
   setPing: (ms: number | null) => void;
   setMuted: (muted: boolean) => void;
@@ -50,6 +52,10 @@ let killId = 0;
 
 export const useStore = create<Store>((set, get) => ({
   muted: localStorage.getItem(MUTE_KEY) === '1',
+  paused: false,
+  setPaused: (paused) => {
+    if (get().paused !== paused) set({ paused });
+  },
   ping: null,
   setPing: (ms) => {
     if (get().ping !== ms) set({ ping: ms });
@@ -62,7 +68,7 @@ export const useStore = create<Store>((set, get) => ({
   ...FRESH_MATCH,
   setLobby: (lobby) => {
     const entering = lobby?.phase === 'playing' && get().lobby?.phase !== 'playing';
-    set(entering ? { lobby, ...FRESH_MATCH } : { lobby });
+    set(entering ? { lobby, ...FRESH_MATCH, paused: false } : lobby ? { lobby } : { lobby, paused: false });
   },
   setResults: (results) => set({ results }),
   setOwn: (hp, maxHp, specialKind, specialAmmo) => {

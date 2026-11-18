@@ -58,7 +58,7 @@ export function App() {
 
   if (!socket || !lobby) return <Home socket={socket} connected={connected} />;
   const banner = connected ? null : (
-    <div data-reconnecting style={{ position: 'fixed', top: 0, left: 0, right: 0, padding: 8, background: '#c0392b', color: '#fff', textAlign: 'center', zIndex: 10 }}>
+    <div data-reconnecting className="banner">
       Mất kết nối, đang vào lại phòng… (ghế được giữ 30 giây)
     </div>
   );
@@ -73,7 +73,7 @@ export function App() {
     <>
       {banner}
       <GameCanvas socket={socket} mapId={lobby.settings.mapId} ownTankId={crew?.tankId ?? null} role={crew?.role ?? 'solo'} />
-      <Hud crew={crew} />
+      <Hud crew={crew} socket={socket} />
     </>
   );
 }
