@@ -1,10 +1,11 @@
 import express from 'express';
 import { createServer } from 'node:http';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { Server } from 'socket.io';
 import type { ClientToServer, ServerToClient } from '@crew-tanks/shared/types';
-import { SERVER_PORT } from '@crew-tanks/shared/constants';
+import { DEFAULT_MAP_ID, SERVER_PORT } from '@crew-tanks/shared/constants';
+import { parseTiledMap } from '@crew-tanks/shared/map';
 import { Game } from './Game';
 import { parsePlayerInput, RateLimiter } from './validate';
 
@@ -16,7 +17,8 @@ const io = new Server<ClientToServer, ServerToClient>(httpServer);
 const clientDist = fileURLToPath(new URL('../client/dist', import.meta.url));
 if (existsSync(clientDist)) app.use(express.static(clientDist));
 
-const game = new Game(io);
+const mapFile = fileURLToPath(new URL(`./maps/${DEFAULT_MAP_ID}.json`, import.meta.url));
+const game = new Game(io, parseTiledMap(JSON.parse(readFileSync(mapFile, 'utf8'))));
 game.start();
 
 io.on('connection', (socket) => {

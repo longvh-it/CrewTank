@@ -6,7 +6,8 @@
   "exports": {
     "./types": "./types.ts",
     "./constants": "./constants.ts",
-    "./physics": "./physics.ts"
+    "./physics": "./physics.ts",
+    "./map": "./map.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

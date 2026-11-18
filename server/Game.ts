@@ -2,14 +2,11 @@ import type { Server } from 'socket.io';
 import {
   SNAPSHOT_HZ,
   TANK_STATS,
-  TEMP_SPAWN_RING_RADIUS,
-  TEMP_SPAWN_SLOTS,
   TICK_HZ,
-  WORLD_HEIGHT,
-  WORLD_WIDTH,
 } from '@crew-tanks/shared/constants';
-import { moveTank } from '@crew-tanks/shared/physics';
-import type { ClientToServer, GameSnapshot, PlayerInput, ServerToClient, TankState } from '@crew-tanks/shared/types';
+import type { MapData } from '@crew-tanks/shared/map';
+import { collideTanks, collideWalls, moveTank } from '@crew-tanks/shared/physics';
+import type { ClientToServer, GameSnapshot, PlayerInput, ServerToClient, TankState, TeamId } from '@crew-tanks/shared/types';
 
 type GameIo = Server<ClientToServer, ServerToClient>;
 
@@ -20,11 +17,15 @@ const NO_INPUT: PlayerInput = { seq: 0, swap: false };
 export class Game {
   private readonly tanks = new Map<string, TankState>();
   private readonly inputs = new Map<string, PlayerInput>();
-  private spawnCount = 0;
+  private readonly spawnCount = { red: 0, blue: 0 };
+  private nextTeam = 0;
   private tickTimer: NodeJS.Timeout | null = null;
   private snapshotTimer: NodeJS.Timeout | null = null;
 
-  constructor(private readonly io: GameIo) {}
+  constructor(
+    private readonly io: GameIo,
+    private readonly map: MapData,
+  ) {}
 
   start(): void {
     this.tickTimer = setInterval(() => this.tick(1 / TICK_HZ), 1000 / TICK_HZ);
@@ -38,13 +39,16 @@ export class Game {
   }
 
   addTank(id: string): void {
-    const angle = (this.spawnCount++ % TEMP_SPAWN_SLOTS) * ((Math.PI * 2) / TEMP_SPAWN_SLOTS);
+    const team = (this.nextTeam++ % 2 === 0 ? 'red' : 'blue') as TeamId;
+    const points = this.map.spawns[team];
+    const spawn = points[this.spawnCount[team]++ % points.length];
+    if (!spawn) throw new Error(`Map has no spawn points for team ${team}`);
     this.tanks.set(id, {
       id,
-      team: this.spawnCount % 2 === 0 ? 'blue' : 'red',
-      x: WORLD_WIDTH / 2 + Math.cos(angle) * TEMP_SPAWN_RING_RADIUS,
-      y: WORLD_HEIGHT / 2 + Math.sin(angle) * TEMP_SPAWN_RING_RADIUS,
-      bodyAngle: 0,
+      team,
+      x: spawn.x,
+      y: spawn.y,
+      bodyAngle: team === 'red' ? 0 : Math.PI,
       turretAngle: 0,
       hp: STATS.maxHp,
       maxHp: STATS.maxHp,
@@ -67,13 +71,23 @@ export class Game {
   }
 
   tick(dt: number): void {
-    for (const tank of this.tanks.values()) {
-      const pose = moveTank(tank, this.inputs.get(tank.id) ?? NO_INPUT, STATS, dt);
+    const all = [...this.tanks.values()];
+    for (const tank of all) {
+      const pose = moveTank(tank, this.inputs.get(tank.id) ?? NO_INPUT, STATS, dt, this.map.grid);
       tank.x = pose.x;
       tank.y = pose.y;
       tank.bodyAngle = pose.bodyAngle;
       tank.turretAngle = pose.turretAngle;
     }
+    // tank-vs-tank separation, then re-resolve walls so a push never leaves a tank inside one
+    const apart = collideTanks(all);
+    all.forEach((tank, i) => {
+      const p = apart[i];
+      if (!p) return;
+      const r = collideWalls(p, this.map.grid);
+      tank.x = r.x;
+      tank.y = r.y;
+    });
   }
 
   snapshot(): GameSnapshot {
