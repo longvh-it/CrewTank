@@ -13,13 +13,19 @@ Test nhiều người chơi bằng 2 cửa sổ trình duyệt trở lên (một
 | 3 | Di chuyển do server quyết định | — | 2 | 1 |
 | 4 | Map + va chạm | — | 3 | 1 |
 | 5 | Bắn + máu + hồi sinh | — | 4 | 2 |
-| 6 | Phòng theo mã + QR | — | 3 | 2 |
-| 7 | Sảnh chờ, đội, ghế | — | 6 | 2 |
+| 6a | Phòng theo mã + QR: RoomManager, Trang chủ | — | 1 | 1 |
+| 6b | Phòng theo mã: thay phòng toàn cục | — | 3, 6a | 2 |
+| 7a | Chia đội: `shared/teams.ts` + test | — | 1 | 1 |
+| 7b | Sảnh chờ: giao diện, ghế, bắt đầu trận | — | 6b, 7a | 2 |
 | 8 | Tách người lái / pháo thủ | — | 5, 7 | 2 |
 | 9 | Team Deathmatch + bảng xếp hạng | — | 5, 7 | 3 |
 | 10 | Đạn đặc biệt, tăng tốc, sửa xe, đổi ghế | — | 8 | 3 |
 | 11 | Hình ảnh, hiệu ứng, âm thanh, map thứ hai | — | 9 | 3 |
 | 12 | Deploy + kết nối lại | — | 9 | 4 |
+
+Bước có phần a/b: "bước N" trong cột Phụ thuộc nghĩa là **cả hai phần** đã merge. Mỗi phần nhận riêng, nhánh riêng (`step-06a-rooms`).
+
+**Đường găng** (chậm một bước là chậm cả dự án): 2 → 3 → 4 → 5 → 8 → 10. Khi có nhiều bước trống, nhận bước trên đường găng trước. Bước 8 cần cả 5 và 7: phần 7b phải merge trước cuối tuần 2.
 
 Việc chuẩn bị không phụ thuộc bước nào, ai chưa nhận được bước thì làm: hai map Tiled (`arena-01`, `arena-02`, ô 32 px, khoảng 40×24 ô, các layer `walls`, `spawns_red`, `spawns_blue`, `pickups`), bộ asset Kenney trong `client/public/assets/`, bản phác giao diện sảnh chờ, và review `shared/types.ts`.
 
@@ -62,15 +68,22 @@ Việc chuẩn bị không phụ thuộc bước nào, ai chưa nhận được 
   - Vitest: góc bật khi chạm tường dọc/ngang, đạn ở tốc độ tối đa không xuyên qua tường dày 1 ô.
   - **Hoàn thành khi:** test pass; 2 cửa sổ có thể bắn hạ nhau và hồi sinh.
 
-- [ ] **Bước 6 — Phòng theo mã + QR** · Người nhận: —
+- [ ] **Bước 6a — Phòng theo mã + QR: RoomManager, Trang chủ** · Người nhận: — · *làm được ngay sau bước 1*
   - `RoomManager`: tạo phòng → mã 4 ký tự; vào phòng bằng mã hoặc `/?room=ABCD`; người tạo là chủ phòng; chủ phòng rời đi → người tiếp theo làm chủ phòng; phòng trống bị xóa sau 5 phút.
   - `playerId` cố định lưu trong `localStorage`, gửi kèm khi tạo/vào phòng.
   - Trang chủ: ô nhập tên, nút Tạo phòng, Vào phòng bằng mã. Hiển thị mã phòng + QR (`qrcode.react`).
-  - Thay phòng toàn cục ở bước 3.
-  - **Hoàn thành khi:** hai phòng chạy song song mà không thấy nhau; quét QR bằng điện thoại mở đúng URL của phòng.
+  - Chưa đụng vào `server/Game.ts` và phòng toàn cục (để phần 6b).
+  - **Hoàn thành khi:** hai phòng tồn tại song song, người trong phòng này không thấy người phòng kia; quét QR bằng điện thoại mở đúng URL của phòng.
 
-- [ ] **Bước 7 — Sảnh chờ, đội, ghế** · Người nhận: —
+- [ ] **Bước 6b — Phòng theo mã: thay phòng toàn cục** · Người nhận: —
+  - Thay phòng toàn cục ở bước 3: mỗi phòng có game loop riêng, snapshot chỉ phát tới người trong phòng.
+  - **Hoàn thành khi:** hai phòng chơi song song, xe phòng này không xuất hiện ở phòng kia.
+
+- [ ] **Bước 7a — Chia đội: `shared/teams.ts` + test** · Người nhận: — · *làm được ngay sau bước 1*
   - `shared/teams.ts`: hàm thuần `autoBalance(players)` theo bảng trong DESIGN.md (6/7/8 người, và ít hơn để test) + kiểm tra hợp lệ khi chọn ghế. Vitest cho 2–8 người.
+  - **Hoàn thành khi:** test pass cho 2–8 người, đúng bảng chia đội trong DESIGN.md.
+
+- [ ] **Bước 7b — Sảnh chờ: giao diện, ghế, bắt đầu trận** · Người nhận: —
   - Giao diện sảnh chờ: hai cột cho hai đội; mỗi xe hiện ghế lái và ghế pháo thủ; bấm vào ghế trống để ngồi; chủ phòng kéo thả được người chơi, bấm Tự chia đội, đổi cài đặt, Bắt đầu.
   - `lobby:start` → `game:start` cho mọi người; xe xuất hiện theo các `TankSlot` trong sảnh chờ.
   - **Hoàn thành khi:** test pass; với 4 cửa sổ trở lên, bấm Bắt đầu đưa mọi người vào trận với đúng các xe đã hiện trong sảnh chờ.

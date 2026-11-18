@@ -8,6 +8,7 @@ Mỗi xe có 1–2 người: người lái (WASD) + pháo thủ (chuột). Xe 1 
 - docs/ARCHITECTURE.md  — kiến trúc, cấu trúc repo, giao thức socket
 - docs/ROADMAP.md       — 12 bước, người nhận, tiêu chí hoàn thành
 - docs/WORKFLOW.md      — quy trình git / PR cho nhóm nhiều người
+- docs/CHECKLIST.md     — checklist hoàn thành một bước
 
 ## Stack (không thay đổi nếu chưa hỏi)
 - TypeScript strict ở mọi nơi. Không dùng `any`, không dùng `@ts-ignore`.
