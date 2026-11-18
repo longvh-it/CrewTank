@@ -20,7 +20,7 @@ Test nhiều người chơi bằng 2 cửa sổ trình duyệt trở lên (một
 | 8 | Tách người lái / pháo thủ | đã xong | 5, 7 | 2 |
 | 9 | Team Deathmatch + bảng xếp hạng | đã xong | 5, 7 | 3 |
 | 10 | Đạn đặc biệt, tăng tốc, sửa xe, đổi ghế | đã xong | 8 | 3 |
-| 11 | Hình ảnh, hiệu ứng, âm thanh, map thứ hai | longvh-it | 9 | 3 |
+| 11 | Hình ảnh, hiệu ứng, âm thanh, map thứ hai | đã xong | 9 | 3 |
 | 12 | Deploy + kết nối lại | — | 9 | 4 |
 
 Bước có phần a/b: "bước N" trong cột Phụ thuộc nghĩa là **cả hai phần** đã merge. Mỗi phần nhận riêng, nhánh riêng (`step-06a-rooms`).
@@ -108,7 +108,7 @@ Việc chuẩn bị không phụ thuộc bước nào, ai chưa nhận được 
   - Khói che các xe bên trong khỏi tầm nhìn của đội địch ở phía client.
   - **Hoàn thành khi:** từng cơ chế được kiểm tra bằng tay trên 2 cửa sổ; các hàm thuần mới đều có test.
 
-- [ ] **Bước 11 — Hình ảnh, hiệu ứng, âm thanh, map thứ hai** · Người nhận: longvh-it
+- [x] **Bước 11 — Hình ảnh, hiệu ứng, âm thanh, map thứ hai** · Người nhận: đã xong
   - Thay hình tạm bằng sprite Kenney Topdown Tanks (màu theo đội), hoạt ảnh nổ, rung camera khi xe mình trúng đạn, âm thanh bắn/nổ/nhặt vật phẩm, nút tắt tiếng.
   - Thêm `arena-02`; chủ phòng chọn được map. Khung hướng dẫn phím trong sảnh chờ.
   - **Hoàn thành khi:** trông như một game hoàn chỉnh, giữ 60 FPS trên máy yếu nhất văn phòng.
