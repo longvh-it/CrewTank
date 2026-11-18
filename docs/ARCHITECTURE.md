@@ -70,13 +70,15 @@ crew-tanks/
    └─ public/assets/       # sprite Kenney, âm thanh, map
 ```
 
-## Phân chia file (nhóm 2 người)
+## Phân chia file (nhóm nhiều người)
 
-| Đường dẫn | Người phụ trách |
+Không có chủ sở hữu cố định. File thuộc về người đang giữ bước có sửa file đó (xem cột **Người nhận** trong docs/ROADMAP.md).
+
+| Đường dẫn | Quy tắc |
 |---|---|
-| `shared/physics.ts`, `shared/map.ts`, `server/Game.ts`, `client/src/game/*` | A – Gameplay |
-| `shared/teams.ts`, `server/RoomManager.ts`, `server/Room.ts`, `server/Stats.ts`, `client/src/ui/*`, các file deploy | B – Phòng chơi & trải nghiệm |
-| `shared/types.ts`, `shared/constants.ts`, `client/src/store.ts`, `server/index.ts`, `CLAUDE.md`, `docs/*` | Dùng chung — PR do cả hai review |
+| `shared/physics.ts`, `shared/map.ts`, `server/Game.ts`, `client/src/game/*` | Nhóm gameplay — tránh hai bước song song cùng sửa |
+| `shared/teams.ts`, `server/RoomManager.ts`, `server/Room.ts`, `server/Stats.ts`, `client/src/ui/*`, các file deploy | Nhóm phòng chơi & trải nghiệm — tránh hai bước song song cùng sửa |
+| `shared/types.ts`, `shared/constants.ts`, `client/src/store.ts`, `server/index.ts`, `CLAUDE.md`, `docs/*` | Dùng chung — PR cần ít nhất 1 người khác review |
 
 ## Giao thức socket — `shared/types.ts` (điểm khởi đầu)
 

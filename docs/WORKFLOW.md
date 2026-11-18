@@ -1,6 +1,12 @@
 # Crew Tanks — Quy trình làm việc nhóm
 
-Hai người, mỗi người dùng Claude CLI. Mục tiêu: làm song song mà không làm hỏng code của nhau.
+Nhóm nhiều người (hiện 4), mỗi người dùng Claude CLI, nhận việc theo từng bước trong docs/ROADMAP.md. Mục tiêu: làm song song mà không làm hỏng code của nhau.
+
+## Nhận việc
+
+1. Mở docs/ROADMAP.md, chọn một bước có **Người nhận** là `—` và mọi bước phụ thuộc đã merge.
+2. Ghi tên GitHub của mình vào cột **Người nhận** (bảng + dòng của bước), commit `docs: nhận bước NN` thẳng lên `main`, push. Push bị từ chối vì người khác vừa nhận → `git pull --rebase`, chọn bước khác nếu trùng.
+3. Mỗi người giữ một bước cùng lúc. Bỏ dở thì đổi lại thành `—`.
 
 ## Git
 
@@ -8,7 +14,7 @@ Hai người, mỗi người dùng Claude CLI. Mục tiêu: làm song song mà k
 - Mỗi bước trong roadmap một nhánh: `step-05-shooting`, `step-07-lobby`.
 - PR nhỏ, merge ít nhất mỗi ngày một lần. Không để nhánh nào cũ quá 2 ngày.
 - CI (`pnpm typecheck && pnpm test`) phải xanh trước khi merge.
-- Người kia review các PR có sửa file dùng chung (xem bảng phân chia file trong ARCHITECTURE.md).
+- Ít nhất 1 người khác review mọi PR; PR có sửa file dùng chung (xem bảng phân chia file trong ARCHITECTURE.md) phải có review trước khi merge.
 - Commit sau mỗi phần nhỏ chạy được. Nếu Claude làm hỏng gì đó: `git restore .` hoặc `git reset --hard` về commit tốt gần nhất.
 
 ## File dùng chung
@@ -16,7 +22,7 @@ Hai người, mỗi người dùng Claude CLI. Mục tiêu: làm song song mà k
 `shared/types.ts`, `shared/constants.ts`, `client/src/store.ts`, `server/index.ts`, `CLAUDE.md`, `docs/*`
 
 - Khi có thể, sửa chúng trong một PR nhỏ riêng, merge trước PR tính năng.
-- Báo trong nhóm chat khi bạn sửa `types.ts` để người kia pull về.
+- Báo trong nhóm chat khi bạn sửa `types.ts` để mọi người pull về.
 
 ## Mỗi phiên Claude
 

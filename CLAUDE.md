@@ -6,8 +6,8 @@ Mỗi xe có 1–2 người: người lái (WASD) + pháo thủ (chuột). Xe 1 
 Đọc trước khi làm:
 - docs/DESIGN.md        — luật chơi và chỉ số (nguồn chuẩn về gameplay)
 - docs/ARCHITECTURE.md  — kiến trúc, cấu trúc repo, giao thức socket
-- docs/ROADMAP.md       — 12 bước, người phụ trách, tiêu chí hoàn thành
-- docs/WORKFLOW.md      — quy trình git / PR cho nhóm 2 người
+- docs/ROADMAP.md       — 12 bước, người nhận, tiêu chí hoàn thành
+- docs/WORKFLOW.md      — quy trình git / PR cho nhóm nhiều người
 
 ## Stack (không thay đổi nếu chưa hỏi)
 - TypeScript strict ở mọi nơi. Không dùng `any`, không dùng `@ts-ignore`.
@@ -33,7 +33,7 @@ Mỗi xe có 1–2 người: người lái (WASD) + pháo thủ (chuột). Xe 1 
 - Mỗi phiên chỉ làm một bước trong roadmap. Chỉ làm đúng những gì bước đó yêu cầu.
 - File dùng chung (`shared/types.ts`, `shared/constants.ts`, `CLAUDE.md`, `docs/*`):
   chỉ sửa khi bước đó cần, và liệt kê mọi thay đổi trong phần tóm tắt cuối.
-- Không động vào file thuộc mảng của người kia (xem docs/ROADMAP.md) trừ khi bước đó yêu cầu.
+- Không động vào file mà bước khác đang làm dở sửa (xem cột Người nhận trong docs/ROADMAP.md) trừ khi bước đó yêu cầu.
 - Không thêm thư viện (dependency) mà không nói rõ lý do.
 - Khi gặp lỗi: trước tiên viết một test thất bại tái hiện lỗi, rồi mới sửa.
 - Trước khi kết thúc bất kỳ việc gì, chạy: `pnpm typecheck && pnpm test`. Cả hai phải pass.
