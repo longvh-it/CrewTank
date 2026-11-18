@@ -15,7 +15,7 @@ Test nhiều người chơi bằng 2 cửa sổ trình duyệt trở lên (một
 | 5 | Bắn + máu + hồi sinh | đã xong | 4 | 2 |
 | 6a | Phòng theo mã + QR: RoomManager, Trang chủ | — | 1 | 1 |
 | 6b | Phòng theo mã: thay phòng toàn cục | — | 3, 6a | 2 |
-| 7a | Chia đội: `shared/teams.ts` + test | longvh-it | 1 | 1 |
+| 7a | Chia đội: `shared/teams.ts` + test | đã xong | 1 | 1 |
 | 7b | Sảnh chờ: giao diện, ghế, bắt đầu trận | — | 6b, 7a | 2 |
 | 8 | Tách người lái / pháo thủ | — | 5, 7 | 2 |
 | 9 | Team Deathmatch + bảng xếp hạng | — | 5, 7 | 3 |
@@ -79,7 +79,7 @@ Việc chuẩn bị không phụ thuộc bước nào, ai chưa nhận được 
   - Thay phòng toàn cục ở bước 3: mỗi phòng có game loop riêng, snapshot chỉ phát tới người trong phòng.
   - **Hoàn thành khi:** hai phòng chơi song song, xe phòng này không xuất hiện ở phòng kia.
 
-- [ ] **Bước 7a — Chia đội: `shared/teams.ts` + test** · Người nhận: longvh-it · *làm được ngay sau bước 1*
+- [x] **Bước 7a — Chia đội: `shared/teams.ts` + test** · Người nhận: đã xong · *làm được ngay sau bước 1*
   - `shared/teams.ts`: hàm thuần `autoBalance(players)` theo bảng trong DESIGN.md (6/7/8 người, và ít hơn để test) + kiểm tra hợp lệ khi chọn ghế. Vitest cho 2–8 người.
   - **Hoàn thành khi:** test pass cho 2–8 người, đúng bảng chia đội trong DESIGN.md.
 
