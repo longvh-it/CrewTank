@@ -125,7 +125,7 @@ export interface PlayerInput {
 export interface TankState {
   id: string; team: TeamId;
   x: number; y: number; bodyAngle: number; turretAngle: number;
-  hp: number; maxHp: number; alive: boolean; respawnAt: number | null;
+  hp: number; maxHp: number; alive: boolean; respawnAt: number | null; invulnerableUntil: number;
   crew: 1 | 2; specialAmmo: number; specialKind: AmmoKind | null; boostReadyAt: number;
 }
 

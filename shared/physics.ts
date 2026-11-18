@@ -1,6 +1,6 @@
 import type { PlayerInput } from './types';
 import type { TankStats } from './constants';
-import { TANK_RADIUS, WORLD_HEIGHT, WORLD_WIDTH } from './constants';
+import { BULLET_MAX_BOUNCES, BULLET_MAX_SUBSTEP, BULLET_RADIUS, TANK_RADIUS, WORLD_HEIGHT, WORLD_WIDTH } from './constants';
 import { isSolid, type CollisionGrid, type Point } from './map';
 
 const DEG = Math.PI / 180;
@@ -128,4 +128,72 @@ export function moveTank(pose: TankPose, input: PlayerInput, stats: TankStats, d
     turretAngle = rotateToward(turretAngle, input.aim.angle, stats.turretTurnSpeed * DEG * dt);
   }
   return { x, y, bodyAngle, turretAngle };
+}
+
+export interface BulletBody {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  bounces: number;
+}
+
+/** Number of sub-steps so each moves at most `maxSubstep` px. */
+export function bulletSubsteps(speed: number, dt: number, maxSubstep: number = BULLET_MAX_SUBSTEP): number {
+  return Math.max(1, Math.ceil((speed * dt) / maxSubstep));
+}
+
+function solidAt(grid: CollisionGrid, x: number, y: number): boolean {
+  return isSolid(grid, Math.floor(x / grid.tileSize), Math.floor(y / grid.tileSize));
+}
+
+/**
+ * Advance a bullet by one sub-step of `fraction` of a tick (`dt` seconds). Reflects the velocity
+ * component that hit a wall (both at a corner). Returns alive=false once it would exceed `maxBounces`.
+ */
+export function stepBulletOnce(
+  b: BulletBody,
+  dt: number,
+  grid: CollisionGrid,
+  maxBounces: number = BULLET_MAX_BOUNCES,
+): { bullet: BulletBody; alive: boolean } {
+  const nx = b.x + b.vx * dt;
+  const ny = b.y + b.vy * dt;
+  if (!solidAt(grid, nx, ny)) return { bullet: { ...b, x: nx, y: ny }, alive: true };
+
+  const hitX = solidAt(grid, nx, b.y);
+  const hitY = solidAt(grid, b.x, ny);
+  const flipX = hitX || !hitY; // corner (neither axis alone) flips both
+  const flipY = hitY || !hitX;
+  const bounces = b.bounces + 1;
+  const bullet: BulletBody = {
+    x: flipX ? b.x : nx,
+    y: flipY ? b.y : ny,
+    vx: flipX ? -b.vx : b.vx,
+    vy: flipY ? -b.vy : b.vy,
+    bounces,
+  };
+  return { bullet, alive: bounces <= maxBounces };
+}
+
+/** Move a bullet for a whole tick in sub-steps of at most BULLET_MAX_SUBSTEP px. */
+export function stepBullet(
+  b: BulletBody,
+  dt: number,
+  grid: CollisionGrid,
+  maxBounces: number = BULLET_MAX_BOUNCES,
+): { bullet: BulletBody; alive: boolean } {
+  const n = bulletSubsteps(Math.hypot(b.vx, b.vy), dt);
+  let cur = b;
+  for (let i = 0; i < n; i++) {
+    const r = stepBulletOnce(cur, dt / n, grid, maxBounces);
+    if (!r.alive) return r;
+    cur = r.bullet;
+  }
+  return { bullet: cur, alive: true };
+}
+
+/** True when a bullet centre is within a tank's hit circle. */
+export function bulletHitsTank(bullet: Point, tank: Point, tankRadius: number = TANK_RADIUS, bulletRadius: number = BULLET_RADIUS): boolean {
+  return Math.hypot(bullet.x - tank.x, bullet.y - tank.y) <= tankRadius + bulletRadius;
 }

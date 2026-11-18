@@ -24,9 +24,14 @@ export function lerpTank(a: TankState, b: TankState, t: number): TankState {
 /** Blend two snapshots; tanks that only exist in `b` (just joined) are taken as-is. */
 export function lerpSnapshot(a: GameSnapshot, b: GameSnapshot, t: number): GameSnapshot {
   const before = new Map(a.tanks.map((tank) => [tank.id, tank]));
+  const prevBullets = new Map(a.bullets.map((bl) => [bl.id, bl]));
   return {
     ...b,
     t: lerp(a.t, b.t, t),
+    bullets: b.bullets.map((bl) => {
+      const prev = prevBullets.get(bl.id);
+      return prev ? { ...bl, x: lerp(prev.x, bl.x, t), y: lerp(prev.y, bl.y, t) } : bl;
+    }),
     tanks: b.tanks.map((tank) => {
       const prev = before.get(tank.id);
       return prev ? lerpTank(prev, tank, t) : tank;

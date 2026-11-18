@@ -65,9 +65,17 @@ export const SEAT_SWAP_FREEZE_SEC = 2;
 // Normal bullet
 export const BULLET_SPEED = 400;
 export const BULLET_DAMAGE = 20;
+export const BULLET_RADIUS = 4; // hit radius against tanks; walls use the bullet centre
 export const BULLET_MAX_BOUNCES = 2;
 export const BULLET_LIFETIME_SEC = 3;
 export const FRIENDLY_FIRE = false;
+
+// Client feedback
+export const HIT_FLASH_MS = 150;
+export const HP_BAR_WIDTH = 36;
+export const HP_BAR_HEIGHT = 5;
+export const HP_BAR_OFFSET_Y = 30;
+export const INVULNERABLE_BLINK_MS = 120;
 
 // Respawn / assist
 export const RESPAWN_DELAY_SEC = 5;
