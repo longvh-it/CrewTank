@@ -119,6 +119,25 @@ describe('rooms', () => {
     expect(t2).toBeDefined();
   });
 
+  it('after a match only the host can return to the lobby, keeping teams and seats', () => {
+    const { manager, games } = stubManager();
+    const room = manager.create('A', 'a', 'sa');
+    manager.join(room.code, 'B', 'b', 'sb');
+    manager.start(room.code, 'sa');
+    const seatsBefore = room.players.map(p => `${p.id}:${p.tankId}:${p.seat}`);
+    expect(manager.returnToLobby(room.code, 'sa')).toBeNull(); // match still running
+    expect(manager.finish(room.code)?.phase).toBe('ended');
+    expect(games.get(room.code)?.stopped).toBe(1);
+    expect(manager.returnToLobby(room.code, 'sb')).toBeNull(); // not host
+    expect(manager.returnToLobby(room.code, 'sa')?.phase).toBe('lobby');
+    expect(room.players.map(p => `${p.id}:${p.tankId}:${p.seat}`)).toEqual(seatsBefore);
+    expect(manager.gameOf(room.code)).toBeUndefined();
+    // a second match can be started with the same seating
+    expect(manager.start(room.code, 'sa')?.phase).toBe('playing');
+    expect(games.get(room.code)?.started).toBe(1); // record replaced by the new game's record
+    expect(manager.finish(room.code)).not.toBeNull();
+  });
+
   it('validates room payloads', () => {
     expect(parseRoomPlayer(' A ', '123e4567-e89b-42d3-a456-426614174000')?.name).toBe('A');
     expect(parseRoomPlayer(' ', 'bad')).toBeNull();

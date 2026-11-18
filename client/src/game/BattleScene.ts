@@ -22,6 +22,7 @@ import type { GameSocket } from '../net/socket';
 import { InputController } from './InputController';
 import { Interpolator } from './Interpolator';
 import { inputForRole, type CrewRole } from './inputRole';
+import { tankLabel } from '../crew';
 import { useStore } from '../store';
 
 const OWN_COLOR = 0x2980b9;
@@ -52,6 +53,14 @@ export class BattleScene extends Phaser.Scene {
   private readonly onState = (s: GameSnapshot): void => this.interpolator.push(s, Date.now());
 
   private readonly onEvent = (e: GameEvent): void => {
+    if (e.type === 'kill') {
+      const { lobby, pushKill } = useStore.getState();
+      const killerTeam = lobby?.tanks.find((t) => t.id === e.killerTankId)?.team;
+      if (lobby && killerTeam) {
+        pushKill({ killer: tankLabel(lobby, e.killerTankId), victim: tankLabel(lobby, e.victimTankId), killerTeam });
+      }
+      return;
+    }
     if (e.type !== 'hit') return;
     const view = this.views.get(e.tankId);
     if (view) view.flashUntil = Date.now() + HIT_FLASH_MS;
@@ -102,6 +111,9 @@ export class BattleScene extends Phaser.Scene {
     const snap = this.interpolator.sample(Date.now());
     if (!snap) return;
     const now = Date.now();
+    const store = useStore.getState();
+    store.setScore(snap.score.red, snap.score.blue);
+    if (snap.endsAt > 0) store.setRemaining(Math.max(0, Math.ceil((snap.endsAt - snap.t) / 1000)));
     const seen = new Set<string>();
     for (const tank of snap.tanks) {
       seen.add(tank.id);

@@ -108,6 +108,8 @@ export interface MatchTank {
   team: TeamId;
   crew: 1 | 2;
   hpBonus: number;
+  driverId: string | null;
+  gunnerId: string | null;
 }
 
 /** Occupied slots as game tanks. A solo tank on the 3-player team of a 7-player match gets +20% HP. */
@@ -118,7 +120,7 @@ export function matchTanks(players: readonly PlayerInfo[], tanks: readonly TankS
     if (crew === 0) continue;
     const teamSize = players.filter((p) => p.team === t.team).length;
     const shorthanded = players.length === 7 && teamSize === 3 && crew === 1;
-    out.push({ id: t.id, team: t.team, crew: crew === 2 ? 2 : 1, hpBonus: shorthanded ? SHORTHANDED_HP_BONUS : 0 });
+    out.push({ id: t.id, team: t.team, crew: crew === 2 ? 2 : 1, hpBonus: shorthanded ? SHORTHANDED_HP_BONUS : 0, driverId: t.driverId, gunnerId: t.gunnerId });
   }
   return out;
 }

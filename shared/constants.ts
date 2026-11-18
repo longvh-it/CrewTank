@@ -72,6 +72,7 @@ export const BULLET_LIFETIME_SEC = 3;
 export const FRIENDLY_FIRE = false;
 
 // Client feedback
+export const KILL_FEED_MAX = 5;
 export const HIT_FLASH_MS = 150;
 export const HP_BAR_WIDTH = 36;
 export const HP_BAR_HEIGHT = 5;

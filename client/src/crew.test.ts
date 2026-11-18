@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { crewInfo } from './crew';
+import { crewInfo, tankLabel } from './crew';
 import type { LobbyState, PlayerInfo } from '@crew-tanks/shared/types';
 
 const p = (id: string, tankId: string | null, seat: 'driver' | 'gunner' | null): PlayerInfo => ({
@@ -26,4 +26,10 @@ describe('crewInfo', () => {
     expect(crewInfo(lobby, 'd')).toBeNull();
     expect(crewInfo(lobby, 'zzz')).toBeNull();
   });
+});
+
+describe('tankLabel', () => {
+  it('joins crew names', () => expect(tankLabel(lobby, 'red-1')).toBe('A+B'));
+  it('solo is the single name', () => expect(tankLabel(lobby, 'red-2')).toBe('C'));
+  it('unknown tank falls back to its id', () => expect(tankLabel(lobby, 'nope')).toBe('nope'));
 });

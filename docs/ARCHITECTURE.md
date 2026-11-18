@@ -175,6 +175,7 @@ export interface ClientToServer {
   'lobby:autoBalance': () => void;                                             // chỉ chủ phòng
   'lobby:settings': (s: Partial<LobbySettings>) => void;                       // chỉ chủ phòng
   'lobby:start': () => void;                                                   // chỉ chủ phòng
+  'lobby:return': () => void;                                                  // chỉ chủ phòng, sau game:end: về sảnh chờ giữ đội/ghế
   'game:input': (input: PlayerInput) => void;
 }
 

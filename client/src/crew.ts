@@ -20,3 +20,11 @@ export function crewInfo(lobby: LobbyState, playerId: string): CrewInfo | null {
     teammateName: lobby.players.find((p) => p.id === mateId)?.name ?? null,
   };
 }
+
+/** Display name of a tank: its crew's names joined with "+" (falls back to the tank id). */
+export function tankLabel(lobby: LobbyState, tankId: string): string {
+  const tank = lobby.tanks.find((t) => t.id === tankId);
+  if (!tank) return tankId;
+  const names = [tank.driverId, tank.gunnerId].flatMap((id) => lobby.players.find((p) => p.id === id)?.name ?? []);
+  return names.length ? names.join('+') : tankId;
+}
