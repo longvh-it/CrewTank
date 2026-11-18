@@ -85,6 +85,7 @@ type Ack<T> = (r: ({ ok: true } & T) | { ok: false; error: string }) => void;
 export interface ClientToServer {
   'room:create': (name: string, playerId: string, ack: Ack<{ code: string }>) => void;
   'room:join': (code: string, name: string, playerId: string, ack: Ack<{}>) => void;
+  'room:leave': () => void;                                                    // rời phòng ngay (không giữ ghế như khi mất kết nối)
   'lobby:pickSeat': (tankId: string, seat: Seat) => void;
   'lobby:leaveSeat': () => void;
   'lobby:movePlayer': (playerId: string, tankId: string, seat: Seat) => void; // chỉ chủ phòng

@@ -198,6 +198,32 @@ describe('rooms', () => {
     expect(manager.resultOf(room.code)).toBe(RESULT);
   });
 
+  it('leave frees the seat at once, hands the host on and ignores strangers', () => {
+    const { manager } = stubManager();
+    const room = manager.create('A', 'a', 'sa');
+    manager.join(room.code, 'B', 'b', 'sb');
+    manager.join(room.code, 'C', 'c', 'sc');
+    manager.autoBalance(room.code, 'sa');
+    expect(manager.leave(room.code, 'nobody')).toBeNull();
+    const state = manager.leave(room.code, 'sa');
+    expect(state?.players.map(p => p.id)).toEqual(['b', 'c']);
+    expect(state?.players.find(p => p.id === 'b')?.isHost).toBe(true);
+    expect(state?.tanks.some(t => t.driverId === 'a' || t.gunnerId === 'a')).toBe(false);
+    // no grace timer: nothing left to fire, and the same socket can no longer act
+    expect(manager.leave(room.code, 'sa')).toBeNull();
+    expect(manager.join(room.code, 'A', 'a', 'sa2')?.players.map(p => p.id)).toContain('a');
+  });
+
+  it('leave mid-match sends neutral input and drops an emptied tank', () => {
+    const { manager, games } = stubManager();
+    const room = manager.create('A', 'a', 'sa');
+    manager.start(room.code, 'sa');
+    const tank = manager.seatOf(room.code, 'sa')?.tankId;
+    manager.leave(room.code, 'sa');
+    expect(games.get(room.code)?.inputs).toContain(`${tank}:driver`);
+    expect(games.get(room.code)?.tanks).not.toContain(tank);
+  });
+
   it('validates room payloads', () => {
     expect(parseRoomPlayer(' A ', '123e4567-e89b-42d3-a456-426614174000')?.name).toBe('A');
     expect(parseRoomPlayer(' ', 'bad')).toBeNull();
