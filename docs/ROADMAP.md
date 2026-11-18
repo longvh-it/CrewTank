@@ -11,7 +11,7 @@ Test nhiều người chơi bằng 2 cửa sổ trình duyệt trở lên (một
 | 1 | Khung repo | đã xong | — | 1 |
 | 2 | Phaser trong React | đã xong | 1 | 1 |
 | 3 | Di chuyển do server quyết định | đã xong | 2 | 1 |
-| 4 | Map + va chạm | — | 3 | 1 |
+| 4 | Map + va chạm | longvh-it | 3 | 1 |
 | 5 | Bắn + máu + hồi sinh | — | 4 | 2 |
 | 6a | Phòng theo mã + QR: RoomManager, Trang chủ | — | 1 | 1 |
 | 6b | Phòng theo mã: thay phòng toàn cục | — | 3, 6a | 2 |
@@ -53,7 +53,7 @@ Việc chuẩn bị không phụ thuộc bước nào, ai chưa nhận được 
   - Tạm thời: mọi người vào chung một phòng toàn cục, mỗi người một xe 1 người.
   - **Hoàn thành khi:** 2 cửa sổ thấy xe của nhau di chuyển mượt; đóng một cửa sổ thì xe của nó biến mất; client không bao giờ tự đặt vị trí.
 
-- [ ] **Bước 4 — Map + va chạm** · Người nhận: —
+- [ ] **Bước 4 — Map + va chạm** · Người nhận: longvh-it
   - `shared/map.ts` đọc Tiled JSON thành lưới va chạm + điểm hồi sinh + điểm vật phẩm. Phaser vẽ đúng map đó.
   - `shared/physics.ts`: va chạm hình tròn với ô tường, trượt dọc theo tường; xe va xe thì đẩy nhau ra.
   - Vitest: lao thẳng vào tường, đi chéo vào góc, trượt dọc tường, hai xe va nhau.
