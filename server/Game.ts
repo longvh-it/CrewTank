@@ -4,6 +4,8 @@ import {
   BULLET_LIFETIME_SEC,
   BULLET_MAX_BOUNCES,
   BULLET_SPEED,
+  DEFAULT_KILL_LIMIT,
+  DEFAULT_TIME_LIMIT_SEC,
   FRIENDLY_FIRE,
   RESPAWN_DELAY_SEC,
   SNAPSHOT_HZ,
@@ -13,6 +15,7 @@ import {
   type TankStats,
 } from '@crew-tanks/shared/constants';
 import type { MapData } from '@crew-tanks/shared/map';
+import { evaluateMatch } from '@crew-tanks/shared/match';
 import {
   bulletHitsTank,
   bulletSubsteps,
@@ -22,19 +25,28 @@ import {
   stepBulletOnce,
   type BulletBody,
 } from '@crew-tanks/shared/physics';
-import type { BulletState, GameEvent, GameSnapshot, PlayerInput, Seat, TankState, TeamId } from '@crew-tanks/shared/types';
+import type { BulletState, GameEvent, GameSnapshot, MatchResult, PlayerInput, Seat, TankState, TeamId } from '@crew-tanks/shared/types';
+import { Stats } from './Stats';
 
 export interface TankSpec {
   id: string;
   team: TeamId;
   crew: 1 | 2;
   hpBonus?: number;
+  driverId: string | null;
+  gunnerId: string | null;
+}
+
+export interface GameOptions {
+  killLimit: number;
+  timeLimitSec: number;
 }
 
 /** Where a game sends its output; the server wires this to one socket.io room. */
 export interface GameChannel {
   state(snapshot: GameSnapshot): void;
   event(e: GameEvent): void;
+  end(result: MatchResult): void;
 }
 
 const NO_INPUT: PlayerInput = { seq: 0, swap: false };
@@ -54,6 +66,11 @@ export class Game {
   private readonly spawnCount = { red: 0, blue: 0 };
   private readonly bullets: Bullet[] = [];
   private readonly lastShotAt = new Map<string, number>();
+  private readonly score: Record<TeamId, number> = { red: 0, blue: 0 };
+  private readonly statsBook = new Stats();
+  private startedAt: number | null = null;
+  private endsAt = 0;
+  private ended = false;
   private nextBulletId = 1;
   private tickTimer: NodeJS.Timeout | null = null;
   private snapshotTimer: NodeJS.Timeout | null = null;
@@ -61,9 +78,17 @@ export class Game {
   constructor(
     private readonly channel: GameChannel,
     private readonly map: MapData,
+    private readonly options: GameOptions = { killLimit: DEFAULT_KILL_LIMIT, timeLimitSec: DEFAULT_TIME_LIMIT_SEC },
   ) {}
 
+  /** Start the match clock (also called by `start`). */
+  beginMatch(now: number = Date.now()): void {
+    this.startedAt = now;
+    this.endsAt = now + this.options.timeLimitSec * 1000;
+  }
+
   start(): void {
+    this.beginMatch();
     this.tickTimer = setInterval(() => this.tick(1 / TICK_HZ), 1000 / TICK_HZ);
     this.snapshotTimer = setInterval(() => this.channel.state(this.snapshot()), 1000 / SNAPSHOT_HZ);
   }
@@ -75,7 +100,8 @@ export class Game {
   }
 
   /** Add a tank for one lobby slot. `hpBonus` is a fraction (0.2 = +20% HP). */
-  addTank({ id, team, crew, hpBonus = 0 }: TankSpec): void {
+  addTank({ id, team, crew, hpBonus = 0, driverId, gunnerId }: TankSpec): void {
+    this.statsBook.registerTank({ id, driverId, gunnerId });
     const stats = TANK_STATS[crew];
     const maxHp = Math.round(stats.maxHp * (1 + hpBonus));
     this.stats.set(id, stats);
@@ -154,6 +180,7 @@ export class Game {
   }
 
   tick(dt: number, now: number = Date.now()): void {
+    if (this.ended) return;
     this.respawnDue(now);
     const all = [...this.tanks.values()].filter((t) => t.alive);
     for (const tank of all) {
@@ -174,6 +201,22 @@ export class Game {
     });
     for (const tank of all) this.maybeFire(tank, now);
     this.stepBullets(dt, now);
+    this.checkEnd(now);
+  }
+
+  private checkEnd(now: number): void {
+    if (this.startedAt === null) return;
+    const outcome = evaluateMatch({ score: this.score, killLimit: this.options.killLimit, now, endsAt: this.endsAt });
+    if (!outcome.over) return;
+    this.ended = true;
+    this.stop();
+    this.channel.state(this.snapshot());
+    this.channel.end({
+      winner: outcome.winner,
+      score: { ...this.score },
+      stats: this.statsBook.results(),
+      awards: this.statsBook.awards(Math.max(0, (now - this.startedAt) / 1000)),
+    });
   }
 
   private statsOf(tankId: string): TankStats {
@@ -196,6 +239,7 @@ export class Game {
     const last = this.lastShotAt.get(tank.id) ?? -Infinity;
     if (now - last < this.statsOf(tank.id).reloadSec * 1000) return;
     this.lastShotAt.set(tank.id, now);
+    this.statsBook.recordShot(tank.id);
     const dx = Math.cos(tank.turretAngle);
     const dy = Math.sin(tank.turretAngle);
     this.bullets.push({
@@ -239,11 +283,16 @@ export class Game {
   }
 
   private damage(tank: TankState, killerId: string, dmg: number, now: number): void {
+    const before = tank.hp;
     tank.hp = Math.max(0, tank.hp - dmg);
     this.emit({ type: 'hit', tankId: tank.id, dmg });
+    this.statsBook.recordHit(killerId, tank.id, before - tank.hp, now);
     if (tank.hp > 0) return;
     tank.alive = false;
     tank.respawnAt = now + RESPAWN_DELAY_SEC * 1000;
+    const killer = this.tanks.get(killerId);
+    if (killer) this.score[killer.team] += 1;
+    this.statsBook.recordKill(killerId, tank.id, now);
     this.emit({ type: 'kill', killerTankId: killerId, victimTankId: tank.id });
   }
 
@@ -258,8 +307,8 @@ export class Game {
       bullets: this.bullets.map((b): BulletState => ({ id: b.id, x: b.x, y: b.y, kind: 'normal' })),
       pickups: [],
       smokes: [],
-      score: { red: 0, blue: 0 },
-      endsAt: 0,
+      score: { ...this.score },
+      endsAt: this.endsAt,
     };
   }
 }

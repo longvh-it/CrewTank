@@ -9,6 +9,7 @@
     "./physics": "./physics.ts",
     "./map": "./map.ts",
     "./lobby": "./lobby.ts",
+    "./match": "./match.ts",
     "./teams": "./teams.ts"
   },
   "scripts": {

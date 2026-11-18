@@ -18,7 +18,7 @@ Test nhiều người chơi bằng 2 cửa sổ trình duyệt trở lên (một
 | 7a | Chia đội: `shared/teams.ts` + test | đã xong | 1 | 1 |
 | 7b | Sảnh chờ: giao diện, ghế, bắt đầu trận | đã xong | 6b, 7a | 2 |
 | 8 | Tách người lái / pháo thủ | đã xong | 5, 7 | 2 |
-| 9 | Team Deathmatch + bảng xếp hạng | longvh-it | 5, 7 | 3 |
+| 9 | Team Deathmatch + bảng xếp hạng | đã xong | 5, 7 | 3 |
 | 10 | Đạn đặc biệt, tăng tốc, sửa xe, đổi ghế | — | 8 | 3 |
 | 11 | Hình ảnh, hiệu ứng, âm thanh, map thứ hai | — | 9 | 3 |
 | 12 | Deploy + kết nối lại | — | 9 | 4 |
@@ -96,7 +96,7 @@ Việc chuẩn bị không phụ thuộc bước nào, ai chưa nhận được 
 
 ## Tuần 3 — hoàn thiện game
 
-- [ ] **Bước 9 — Team Deathmatch + bảng xếp hạng** · Người nhận: longvh-it
+- [x] **Bước 9 — Team Deathmatch + bảng xếp hạng** · Người nhận: đã xong
   - Thắng khi đủ số lượt hạ hoặc khi hết giờ; có thể hòa. HUD: điểm hai đội, đồng hồ, kill feed.
   - `server/Stats.ts`: PlayerStats (lượt hạ tính cho cả hai người trên xe), trợ giúp (gây sát thương trong 5 s trước khi xe bị hạ), danh hiệu theo DESIGN.md.
   - `game:end` → màn hình Bảng xếp hạng → "Về sảnh chờ" giữ nguyên đội và ghế.

@@ -14,9 +14,9 @@ type Room = { state: LobbyState; sockets: Map<string, string>; game?: Game; clea
 export class RoomManager {
   private readonly rooms = new Map<string, Room>();
 
-  constructor(private readonly createGame: (code: string, mapId: string) => Game) {}
+  constructor(private readonly createGame: (code: string, settings: LobbySettings) => Game) {}
 
-  /** `createGame(code, mapId)` builds a game wired to that room's socket.io channel. */
+  /** `createGame(code, settings)` builds a game wired to that room's socket.io channel. */
   create(name: string, playerId: string, socketId: string): LobbyState {
     let code: string;
     do { code = generateRoomCode(); } while (this.rooms.has(code));
@@ -134,11 +134,31 @@ export class RoomManager {
     const room = this.lobbyRoom(code);
     if (!room || !this.playerOf(room, socketId)?.isHost || room.state.players.length === 0) return null;
     this.apply(room, fillUnseated(room.state.players, room.state.tanks));
-    const game = this.createGame(code, room.state.settings.mapId);
+    const game = this.createGame(code, room.state.settings);
     for (const tank of matchTanks(room.state.players, room.state.tanks)) game.addTank(tank);
     game.start();
     room.game = game;
     room.state.phase = 'playing';
+    return room.state;
+  }
+
+  /** Called when the room's game reports a finished match. */
+  finish(code: string): LobbyState | null {
+    const room = this.rooms.get(code);
+    if (!room || room.state.phase !== 'playing') return null;
+    room.game?.stop();
+    room.state.phase = 'ended';
+    return room.state;
+  }
+
+  /** Host only, after a match: back to the lobby keeping teams and seats. */
+  returnToLobby(code: string, socketId: string): LobbyState | null {
+    const room = this.rooms.get(code);
+    if (!room || room.state.phase !== 'ended' || !this.playerOf(room, socketId)?.isHost) return null;
+    room.game?.stop();
+    delete room.game;
+    room.state.tanks = normalizeTanks(room.state.tanks);
+    room.state.phase = 'lobby';
     return room.state;
   }
 

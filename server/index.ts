@@ -30,13 +30,19 @@ function loadMap(mapId: string): MapData {
 }
 // One Game per room (created when the host starts the match); its snapshots and events go only to that room.
 const rooms = new RoomManager(
-  (code, mapId) =>
+  (code, settings) =>
     new Game(
       {
         state: (snapshot) => io.to(code).emit('game:state', snapshot),
         event: (e) => io.to(code).emit('game:event', e),
+        end: (result) => {
+          io.to(code).emit('game:end', result);
+          const state = rooms.finish(code);
+          if (state) io.to(code).emit('lobby:state', state);
+        },
       },
-      loadMap(mapId),
+      loadMap(settings.mapId),
+      { killLimit: settings.killLimit, timeLimitSec: settings.timeLimitSec },
     ),
 );
 
@@ -92,6 +98,9 @@ io.on('connection', (socket) => {
     if (!state) return;
     io.to(roomCode).emit('game:start', state.settings.mapId);
     publish(state);
+  });
+  socket.on('lobby:return', () => {
+    if (roomCode) publish(rooms.returnToLobby(roomCode, socket.id));
   });
   const limiter = new RateLimiter();
   socket.on('game:input', (payload) => {
