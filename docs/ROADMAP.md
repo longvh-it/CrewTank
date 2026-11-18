@@ -21,7 +21,7 @@ Test nhiều người chơi bằng 2 cửa sổ trình duyệt trở lên (một
 | 9 | Team Deathmatch + bảng xếp hạng | đã xong | 5, 7 | 3 |
 | 10 | Đạn đặc biệt, tăng tốc, sửa xe, đổi ghế | đã xong | 8 | 3 |
 | 11 | Hình ảnh, hiệu ứng, âm thanh, map thứ hai | đã xong | 9 | 3 |
-| 12 | Deploy + kết nối lại | — | 9 | 4 |
+| 12 | Deploy + kết nối lại | longvh-it | 9 | 4 |
 
 Bước có phần a/b: "bước N" trong cột Phụ thuộc nghĩa là **cả hai phần** đã merge. Mỗi phần nhận riêng, nhánh riêng (`step-06a-rooms`).
 
@@ -115,7 +115,7 @@ Việc chuẩn bị không phụ thuộc bước nào, ai chưa nhận được 
 
 ## Tuần 4 — phát hành
 
-- [ ] **Bước 12 — Deploy + kết nối lại** · Người nhận: —
+- [ ] **Bước 12 — Deploy + kết nối lại** · Người nhận: longvh-it
   - Production: server phục vụ `client/dist`; `Dockerfile`; deploy lên Railway (hoặc Fly.io) vùng Singapore, một instance, không ngủ.
   - Kết nối lại: khi mất kết nối giữ ghế 30 s; cùng `playerId` vào lại đúng xe đó giữa trận.
   - HUD hiện ping.
