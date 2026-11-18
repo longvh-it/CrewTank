@@ -142,6 +142,17 @@ export class RoomManager {
     return room.state;
   }
 
+  /** The crew of `tankId` traded seats during a match (hold F). Returns the new lobby state. */
+  swapSeats(code: string, tankId: string): LobbyState | null {
+    const room = this.rooms.get(code);
+    const tank = room?.state.tanks.find(t => t.id === tankId);
+    if (!room || !tank || !tank.driverId || !tank.gunnerId) return null;
+    [tank.driverId, tank.gunnerId] = [tank.gunnerId, tank.driverId];
+    room.state.players = room.state.players.map(p =>
+      p.id === tank.driverId ? { ...p, seat: 'driver' as const } : p.id === tank.gunnerId ? { ...p, seat: 'gunner' as const } : p);
+    return room.state;
+  }
+
   /** Called when the room's game reports a finished match. */
   finish(code: string): LobbyState | null {
     const room = this.rooms.get(code);

@@ -19,7 +19,7 @@ Test nhiều người chơi bằng 2 cửa sổ trình duyệt trở lên (một
 | 7b | Sảnh chờ: giao diện, ghế, bắt đầu trận | đã xong | 6b, 7a | 2 |
 | 8 | Tách người lái / pháo thủ | đã xong | 5, 7 | 2 |
 | 9 | Team Deathmatch + bảng xếp hạng | đã xong | 5, 7 | 3 |
-| 10 | Đạn đặc biệt, tăng tốc, sửa xe, đổi ghế | longvh-it | 8 | 3 |
+| 10 | Đạn đặc biệt, tăng tốc, sửa xe, đổi ghế | đã xong | 8 | 3 |
 | 11 | Hình ảnh, hiệu ứng, âm thanh, map thứ hai | — | 9 | 3 |
 | 12 | Deploy + kết nối lại | — | 9 | 4 |
 
@@ -102,7 +102,7 @@ Việc chuẩn bị không phụ thuộc bước nào, ai chưa nhận được 
   - `game:end` → màn hình Bảng xếp hạng → "Về sảnh chờ" giữ nguyên đội và ghế.
   - **Hoàn thành khi:** chạy trọn một vòng sảnh chờ → trận → bảng xếp hạng → trận thứ hai mà không cần tải lại trang; số liệu thống kê đúng.
 
-- [ ] **Bước 10 — Đạn đặc biệt, tăng tốc, sửa xe, đổi ghế** · Người nhận: longvh-it
+- [x] **Bước 10 — Đạn đặc biệt, tăng tốc, sửa xe, đổi ghế** · Người nhận: đã xong
   - Vật phẩm ở các điểm trên map, xuất hiện lại sau 20 s. Đạn nổ lan, đạn xuyên giáp, đạn khói, bộ sửa theo DESIGN.md. Chỉ xe 2 người giữ được đạn đặc biệt.
   - Tăng tốc (người lái, chỉ xe 2 người), giữ R để sửa khi đứng yên, cả hai cùng giữ F 0,5 s để đổi ghế (xe đứng yên 2 s).
   - Khói che các xe bên trong khỏi tầm nhìn của đội địch ở phía client.

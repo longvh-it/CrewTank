@@ -35,6 +35,10 @@ const rooms = new RoomManager(
       {
         state: (snapshot) => io.to(code).emit('game:state', snapshot),
         event: (e) => io.to(code).emit('game:event', e),
+        swapped: (tankId) => {
+          const state = rooms.swapSeats(code, tankId);
+          if (state) io.to(code).emit('lobby:state', state);
+        },
         end: (result) => {
           io.to(code).emit('game:end', result);
           const state = rooms.finish(code);

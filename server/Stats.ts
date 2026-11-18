@@ -58,6 +58,12 @@ export class Stats {
     return id ? this.players.get(id) : undefined;
   }
 
+  /** The crew traded seats: driver and gunner swap roles for the rest of the match. */
+  swapSeats(tankId: string): void {
+    const t = this.tanks.get(tankId);
+    if (t) [t.driverId, t.gunnerId] = [t.gunnerId, t.driverId];
+  }
+
   recordShot(tankId: string): void {
     const s = this.shooterOf(tankId);
     if (s) s.shots += 1;

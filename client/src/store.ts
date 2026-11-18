@@ -1,10 +1,12 @@
 import { create } from 'zustand';
 import { KILL_FEED_MAX } from '@crew-tanks/shared/constants';
-import type { LobbyState, MatchResult, TeamId } from '@crew-tanks/shared/types';
+import type { AmmoKind, LobbyState, MatchResult, TeamId } from '@crew-tanks/shared/types';
 
 export interface HudState {
   hp: number;
   maxHp: number;
+  specialKind: AmmoKind | null;
+  specialAmmo: number;
 }
 
 export interface KillFeedEntry {
@@ -24,14 +26,14 @@ interface Store {
   setLobby: (lobby: LobbyState | null) => void;
   setResults: (results: MatchResult) => void;
   /** The setters below write only when a value actually changed, so React never re-renders per frame. */
-  setHp: (hp: number, maxHp: number) => void;
+  setOwn: (hp: number, maxHp: number, specialKind: AmmoKind | null, specialAmmo: number) => void;
   setScore: (red: number, blue: number) => void;
   setRemaining: (sec: number) => void;
   pushKill: (entry: Omit<KillFeedEntry, 'id'>) => void;
 }
 
 const FRESH_MATCH = {
-  hud: { hp: 0, maxHp: 0 },
+  hud: { hp: 0, maxHp: 0, specialKind: null, specialAmmo: 0 } as HudState,
   score: { red: 0, blue: 0 },
   remainingSec: 0,
   killFeed: [] as KillFeedEntry[],
@@ -48,9 +50,13 @@ export const useStore = create<Store>((set, get) => ({
     set(entering ? { lobby, ...FRESH_MATCH } : { lobby });
   },
   setResults: (results) => set({ results }),
-  setHp: (hp, maxHp) => {
+  setOwn: (hp, maxHp, specialKind, specialAmmo) => {
     const { hud } = get();
-    if (hud.hp !== hp || hud.maxHp !== maxHp) set({ hud: { hp, maxHp } });
+    // hp changes in whole points only (repair heals fractions); the HUD shows rounded HP
+    const shown = Math.ceil(hp);
+    if (hud.hp !== shown || hud.maxHp !== maxHp || hud.specialKind !== specialKind || hud.specialAmmo !== specialAmmo) {
+      set({ hud: { hp: shown, maxHp, specialKind, specialAmmo } });
+    }
   },
   setScore: (red, blue) => {
     const { score } = get();

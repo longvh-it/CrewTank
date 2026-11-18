@@ -10,6 +10,7 @@
     "./map": "./map.ts",
     "./lobby": "./lobby.ts",
     "./match": "./match.ts",
+    "./specials": "./specials.ts",
     "./teams": "./teams.ts"
   },
   "scripts": {

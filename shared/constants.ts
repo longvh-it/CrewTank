@@ -86,6 +86,8 @@ export const ASSIST_WINDOW_SEC = 5;
 
 // Pickups
 export const PICKUP_RESPAWN_SEC = 20;
+export const PICKUP_RADIUS = 14;
+export const AMMO_PER_PICKUP = 3; // special shells granted by one ammo pickup (capped by maxSpecialAmmo)
 export const EXPLOSIVE_RADIUS = 80;
 export const EXPLOSIVE_DAMAGE = 30;
 export const PIERCING_DAMAGE = 40;

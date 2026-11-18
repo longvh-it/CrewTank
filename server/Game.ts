@@ -1,13 +1,9 @@
 import {
-  BARREL_LENGTH,
-  BULLET_DAMAGE,
-  BULLET_LIFETIME_SEC,
-  BULLET_MAX_BOUNCES,
-  BULLET_SPEED,
+  BOOST_SPEED,
   DEFAULT_KILL_LIMIT,
   DEFAULT_TIME_LIMIT_SEC,
-  FRIENDLY_FIRE,
   RESPAWN_DELAY_SEC,
+  SEAT_SWAP_FREEZE_SEC,
   SNAPSHOT_HZ,
   SPAWN_INVULNERABLE_SEC,
   TANK_STATS,
@@ -16,16 +12,11 @@ import {
 } from '@crew-tanks/shared/constants';
 import type { MapData } from '@crew-tanks/shared/map';
 import { evaluateMatch } from '@crew-tanks/shared/match';
-import {
-  bulletHitsTank,
-  bulletSubsteps,
-  collideTanks,
-  collideWalls,
-  moveTank,
-  stepBulletOnce,
-  type BulletBody,
-} from '@crew-tanks/shared/physics';
-import type { BulletState, GameEvent, GameSnapshot, MatchResult, PlayerInput, Seat, TankState, TeamId } from '@crew-tanks/shared/types';
+import { collideTanks, collideWalls, moveTank } from '@crew-tanks/shared/physics';
+import { isBoosting, repairHp, stepSwapHold, takeShell, updateBoost, type BoostState, type SwapHold } from '@crew-tanks/shared/specials';
+import type { AmmoKind, GameEvent, GameSnapshot, MatchResult, PlayerInput, Seat, TankState, TeamId } from '@crew-tanks/shared/types';
+import { BulletSim } from './BulletSim';
+import { Pickups } from './Pickups';
 import { Stats } from './Stats';
 
 export interface TankSpec {
@@ -47,15 +38,17 @@ export interface GameChannel {
   state(snapshot: GameSnapshot): void;
   event(e: GameEvent): void;
   end(result: MatchResult): void;
+  /** The two crew of a tank traded seats (hold F together). */
+  swapped(tankId: string): void;
 }
 
 const NO_INPUT: PlayerInput = { seq: 0, swap: false };
 
-interface Bullet extends BulletBody {
-  id: string;
-  ownerId: string;
-  team: TeamId;
-  expiresAt: number;
+interface TankRuntime {
+  boost: BoostState;
+  swap: SwapHold;
+  swapHeld: Record<Seat, boolean>;
+  frozenUntil: number;
 }
 
 /** One game per room, one tank per lobby TankSlot. Server owns positions, bullets, HP and respawns. */
@@ -64,14 +57,15 @@ export class Game {
   private readonly inputs = new Map<string, PlayerInput>();
   private readonly stats = new Map<string, TankStats>();
   private readonly spawnCount = { red: 0, blue: 0 };
-  private readonly bullets: Bullet[] = [];
+  private readonly runtime = new Map<string, TankRuntime>();
+  private readonly sim: BulletSim;
+  private readonly pickups: Pickups;
   private readonly lastShotAt = new Map<string, number>();
   private readonly score: Record<TeamId, number> = { red: 0, blue: 0 };
   private readonly statsBook = new Stats();
   private startedAt: number | null = null;
   private endsAt = 0;
   private ended = false;
-  private nextBulletId = 1;
   private tickTimer: NodeJS.Timeout | null = null;
   private snapshotTimer: NodeJS.Timeout | null = null;
 
@@ -79,7 +73,14 @@ export class Game {
     private readonly channel: GameChannel,
     private readonly map: MapData,
     private readonly options: GameOptions = { killLimit: DEFAULT_KILL_LIMIT, timeLimitSec: DEFAULT_TIME_LIMIT_SEC },
-  ) {}
+  ) {
+    this.sim = new BulletSim(map.grid, {
+      tanks: () => this.tanks.values(),
+      hit: (victim, ownerId, dmg, now) => this.damage(victim, ownerId, dmg, now),
+      emit: (e) => this.emit(e),
+    });
+    this.pickups = new Pickups(map.pickups);
+  }
 
   /** Start the match clock (also called by `start`). */
   beginMatch(now: number = Date.now()): void {
@@ -105,6 +106,7 @@ export class Game {
     const stats = TANK_STATS[crew];
     const maxHp = Math.round(stats.maxHp * (1 + hpBonus));
     this.stats.set(id, stats);
+    this.runtime.set(id, { boost: { boostUntil: 0, readyAt: 0 }, swap: { heldSec: 0, latched: false }, swapHeld: { driver: false, gunner: false }, frozenUntil: 0 });
     this.tanks.set(id, {
       id,
       team,
@@ -140,6 +142,7 @@ export class Game {
   removeTank(id: string): void {
     this.tanks.delete(id);
     this.stats.delete(id);
+    this.runtime.delete(id);
     this.inputs.delete(id);
     this.lastShotAt.delete(id);
   }
@@ -151,6 +154,20 @@ export class Game {
       t.x = x;
       t.y = y;
     }
+  }
+
+  /** Test hooks: hand a tank shells / deal damage directly. */
+  giveShells(id: string, kind: AmmoKind, count: number): void {
+    const t = this.tanks.get(id);
+    if (t) {
+      t.specialKind = kind;
+      t.specialAmmo = count;
+    }
+  }
+
+  damageForTest(id: string, dmg: number, byTankId: string): void {
+    const t = this.tanks.get(id);
+    if (t) this.damage(t, byTankId, dmg, Date.now() + 1e9);
   }
 
   setInvulnerable(id: string, until: number): void {
@@ -165,6 +182,8 @@ export class Game {
   setInput(tankId: string, seat: Seat, input: PlayerInput): void {
     const tank = this.tanks.get(tankId);
     if (!tank) return;
+    const rt = this.runtime.get(tankId);
+    if (rt && tank.crew === 2) rt.swapHeld[seat] = input.swap;
     if (tank.crew === 1) {
       this.inputs.set(tankId, input);
       return;
@@ -183,13 +202,7 @@ export class Game {
     if (this.ended) return;
     this.respawnDue(now);
     const all = [...this.tanks.values()].filter((t) => t.alive);
-    for (const tank of all) {
-      const pose = moveTank(tank, this.inputs.get(tank.id) ?? NO_INPUT, this.statsOf(tank.id), dt, this.map.grid);
-      tank.x = pose.x;
-      tank.y = pose.y;
-      tank.bodyAngle = pose.bodyAngle;
-      tank.turretAngle = pose.turretAngle;
-    }
+    for (const tank of all) this.driveTank(tank, dt, now);
     // tank-vs-tank separation, then re-resolve walls so a push never leaves a tank inside one
     const apart = collideTanks(all);
     all.forEach((tank, i) => {
@@ -200,8 +213,38 @@ export class Game {
       tank.y = r.y;
     });
     for (const tank of all) this.maybeFire(tank, now);
-    this.stepBullets(dt, now);
+    this.pickups.step(all, now, (e) => this.emit(e));
+    this.sim.step(dt, now);
     this.checkEnd(now);
+  }
+
+  /** Movement, boost, repair and seat swapping for one live tank. */
+  private driveTank(tank: TankState, dt: number, now: number): void {
+    const rt = this.runtime.get(tank.id);
+    const frozen = rt !== undefined && now < rt.frozenUntil;
+    const input = frozen ? NO_INPUT : (this.inputs.get(tank.id) ?? NO_INPUT);
+    let stats = this.statsOf(tank.id);
+    if (rt) {
+      rt.boost = updateBoost(rt.boost, input.move?.boost === true, stats.canBoost, now);
+      tank.boostReadyAt = rt.boost.readyAt;
+      if (isBoosting(rt.boost, now)) stats = { ...stats, speed: BOOST_SPEED };
+      if (tank.crew === 2) {
+        const r = stepSwapHold(rt.swap, rt.swapHeld.driver, rt.swapHeld.gunner, dt);
+        rt.swap = r.state;
+        if (r.triggered) {
+          rt.frozenUntil = now + SEAT_SWAP_FREEZE_SEC * 1000;
+          this.statsBook.swapSeats(tank.id);
+          this.channel.swapped(tank.id);
+        }
+      }
+    }
+    const pose = moveTank(tank, input, stats, dt, this.map.grid);
+    const moving = input.move !== undefined && (input.move.throttle !== 0 || input.move.turn !== 0);
+    tank.hp = repairHp(tank.hp, tank.maxHp, dt, input.move?.repair === true, moving);
+    tank.x = pose.x;
+    tank.y = pose.y;
+    tank.bodyAngle = pose.bodyAngle;
+    tank.turretAngle = pose.turretAngle;
   }
 
   private checkEnd(now: number): void {
@@ -231,58 +274,29 @@ export class Game {
       tank.alive = true;
       tank.respawnAt = null;
       tank.invulnerableUntil = now + SPAWN_INVULNERABLE_SEC * 1000;
+      tank.specialAmmo = 0;
+      tank.specialKind = null;
     }
   }
 
   private maybeFire(tank: TankState, now: number): void {
-    if (!this.inputs.get(tank.id)?.aim?.fire) return;
+    const rt = this.runtime.get(tank.id);
+    if (rt && now < rt.frozenUntil) return;
+    const aim = this.inputs.get(tank.id)?.aim;
+    if (!aim?.fire && !aim?.special) return;
     const last = this.lastShotAt.get(tank.id) ?? -Infinity;
     if (now - last < this.statsOf(tank.id).reloadSec * 1000) return;
     this.lastShotAt.set(tank.id, now);
+    const shell = takeShell(tank, aim.special);
+    tank.specialAmmo = shell.specialAmmo;
+    tank.specialKind = shell.specialKind;
     this.statsBook.recordShot(tank.id);
-    const dx = Math.cos(tank.turretAngle);
-    const dy = Math.sin(tank.turretAngle);
-    this.bullets.push({
-      id: `b${this.nextBulletId++}`,
-      ownerId: tank.id,
-      team: tank.team,
-      x: tank.x + dx * BARREL_LENGTH,
-      y: tank.y + dy * BARREL_LENGTH,
-      vx: dx * BULLET_SPEED,
-      vy: dy * BULLET_SPEED,
-      bounces: 0,
-      expiresAt: now + BULLET_LIFETIME_SEC * 1000,
-    });
+    this.sim.spawn(tank, shell.kind, now);
   }
 
-  private stepBullets(dt: number, now: number): void {
-    const n = bulletSubsteps(BULLET_SPEED, dt);
-    for (let i = this.bullets.length - 1; i >= 0; i--) {
-      const bullet = this.bullets[i];
-      if (!bullet) continue;
-      let alive = now < bullet.expiresAt;
-      for (let k = 0; alive && k < n; k++) {
-        const r = stepBulletOnce(bullet, dt / n, this.map.grid, BULLET_MAX_BOUNCES);
-        Object.assign(bullet, r.bullet);
-        alive = r.alive && !this.hitTank(bullet, now);
-      }
-      if (!alive) this.bullets.splice(i, 1);
-    }
-  }
-
-  /** Returns true when the bullet was consumed by a tank. */
-  private hitTank(bullet: Bullet, now: number): boolean {
-    for (const tank of this.tanks.values()) {
-      if (!tank.alive || tank.id === bullet.ownerId) continue;
-      if (!FRIENDLY_FIRE && tank.team === bullet.team) continue;
-      if (!bulletHitsTank(bullet, tank)) continue;
-      if (now >= tank.invulnerableUntil) this.damage(tank, bullet.ownerId, BULLET_DAMAGE, now);
-      return true;
-    }
-    return false;
-  }
-
-  private damage(tank: TankState, killerId: string, dmg: number, now: number): void {
+  /** Damage from a shell; invulnerable tanks (just respawned) take none. */
+    private damage(tank: TankState, killerId: string, dmg: number, now: number): void {
+    if (now < tank.invulnerableUntil) return;
     const before = tank.hp;
     tank.hp = Math.max(0, tank.hp - dmg);
     this.emit({ type: 'hit', tankId: tank.id, dmg });
@@ -304,9 +318,9 @@ export class Game {
     return {
       t: Date.now(),
       tanks: [...this.tanks.values()].map((t) => ({ ...t })),
-      bullets: this.bullets.map((b): BulletState => ({ id: b.id, x: b.x, y: b.y, kind: 'normal' })),
-      pickups: [],
-      smokes: [],
+      bullets: this.sim.bulletStates(),
+      pickups: this.pickups.states(),
+      smokes: this.sim.smokeZones(),
       score: { ...this.score },
       endsAt: this.endsAt,
     };
