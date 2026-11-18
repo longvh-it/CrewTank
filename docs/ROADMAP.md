@@ -12,7 +12,7 @@ Test nhiều người chơi bằng 2 cửa sổ trình duyệt trở lên (một
 | 2 | Phaser trong React | đã xong | 1 | 1 |
 | 3 | Di chuyển do server quyết định | đã xong | 2 | 1 |
 | 4 | Map + va chạm | đã xong | 3 | 1 |
-| 5 | Bắn + máu + hồi sinh | longvh-it | 4 | 2 |
+| 5 | Bắn + máu + hồi sinh | đã xong | 4 | 2 |
 | 6a | Phòng theo mã + QR: RoomManager, Trang chủ | — | 1 | 1 |
 | 6b | Phòng theo mã: thay phòng toàn cục | — | 3, 6a | 2 |
 | 7a | Chia đội: `shared/teams.ts` + test | longvh-it | 1 | 1 |
@@ -61,7 +61,7 @@ Việc chuẩn bị không phụ thuộc bước nào, ai chưa nhận được 
 
 ## Tuần 2 — bắn, phòng chơi, vai trò
 
-- [ ] **Bước 5 — Bắn + máu + hồi sinh** · Người nhận: longvh-it
+- [x] **Bước 5 — Bắn + máu + hồi sinh** · Người nhận: đã xong
   - Đạn thường theo constants: thời gian nạp, di chuyển theo bước nhỏ, bật tường tối đa 2 lần, sống 3 s, bắn trúng đồng đội không mất máu.
   - Trúng đạn thì trừ máu; về 0 → sự kiện `kill`, hồi sinh sau 5 s tại điểm hồi sinh của đội, bất tử 2 s.
   - Client: vẽ đạn, nháy sáng khi trúng, thanh máu trên mỗi xe.

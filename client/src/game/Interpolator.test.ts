@@ -5,7 +5,7 @@ import type { GameSnapshot, TankState } from '@crew-tanks/shared/types';
 
 const tank = (id: string, x: number, bodyAngle = 0): TankState => ({
   id, team: 'red', x, y: 0, bodyAngle, turretAngle: 0, hp: 100, maxHp: 100, alive: true,
-  respawnAt: null, crew: 1, specialAmmo: 0, specialKind: null, boostReadyAt: 0,
+  respawnAt: null, invulnerableUntil: 0, crew: 1, specialAmmo: 0, specialKind: null, boostReadyAt: 0,
 });
 const snap = (t: number, tanks: TankState[]): GameSnapshot => ({
   t, tanks, bullets: [], pickups: [], smokes: [], score: { red: 0, blue: 0 }, endsAt: 0,
@@ -26,6 +26,16 @@ describe('lerpSnapshot', () => {
     const r = lerpSnapshot(snap(0, [tank('a', 0)]), snap(100, [tank('a', 100), tank('b', 7)]), 0.5);
     expect(r.tanks.find((t) => t.id === 'a')?.x).toBe(50);
     expect(r.tanks.find((t) => t.id === 'b')?.x).toBe(7);
+  });
+});
+
+describe('lerpSnapshot bullets', () => {
+  it('interpolates bullets by id', () => {
+    const a = { ...snap(0, []), bullets: [{ id: 'b1', x: 0, y: 0, kind: 'normal' as const }] };
+    const b = { ...snap(100, []), bullets: [{ id: 'b1', x: 40, y: 20, kind: 'normal' as const }, { id: 'b2', x: 5, y: 5, kind: 'normal' as const }] };
+    const r = lerpSnapshot(a, b, 0.5);
+    expect(r.bullets[0]).toMatchObject({ x: 20, y: 10 });
+    expect(r.bullets[1]).toMatchObject({ x: 5, y: 5 });
   });
 });
 
