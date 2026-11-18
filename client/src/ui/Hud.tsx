@@ -7,6 +7,7 @@ const ROLE_LABEL = { solo: 'XE 1 NGƯỜI', driver: 'NGƯỜI LÁI', gunner: 'PH
 export function Hud({ crew }: { crew: CrewInfo | null }) {
   const hp = useStore((s) => s.hud.hp);
   const maxHp = useStore((s) => s.hud.maxHp);
+  const ping = useStore((s) => s.ping);
   const muted = useStore((s) => s.muted);
   const setMuted = useStore((s) => s.setMuted);
   const specialKind = useStore((s) => s.hud.specialKind);
@@ -24,6 +25,9 @@ export function Hud({ crew }: { crew: CrewInfo | null }) {
       >
         {muted ? '🔇 Bật tiếng' : '🔊 Tắt tiếng'}
       </button>
+      <div data-hud-ping style={{ position: 'absolute', bottom: 12, right: 130, fontSize: 13 }}>
+        Ping: {ping === null ? '…' : `${ping} ms`}
+      </div>
       <div data-hud-score style={{ position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)', fontSize: 22 }}>
         <span style={{ color: '#ff6b5b' }}>Đỏ {score.red}</span> · {clock} · <span style={{ color: '#5bb3ff' }}>{score.blue} Xanh</span>
       </div>

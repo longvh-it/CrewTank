@@ -36,6 +36,32 @@ Gặp lỗi: `/fix <mô tả lỗi>`.
 | `.claude/commands/step.md` | Lệnh `/step <số>` |
 | `.claude/commands/fix.md` | Lệnh `/fix <lỗi>` |
 
+## Chạy bằng Docker
+
+```bash
+docker build -t crew-tanks .
+docker run --rm -p 3000:3000 crew-tanks     # mở http://localhost:3000
+```
+
+Một container phục vụ cả client (`client/dist`) lẫn server Socket.IO. Biến môi trường `PORT` đổi cổng (mặc định 3000); `GET /healthz` trả `ok` để kiểm tra sống.
+
+## Deploy lên Railway (hoặc Fly.io)
+
+Cần tài khoản riêng của bạn, phần này làm tay, repo không tự deploy. Yêu cầu của game: **đúng một instance** (toàn bộ trạng thái nằm trong bộ nhớ), WebSocket mở, **không cho ngủ**, vùng **Singapore** (ping < 80 ms ở Việt Nam).
+
+Railway:
+1. New Project → Deploy from GitHub repo → chọn repo này; Railway tự nhận `Dockerfile`.
+2. Settings → Regions: **Southeast Asia (Singapore)**, Replicas = 1.
+3. Settings → bỏ "Serverless"/App Sleeping; Healthcheck path `/healthz`.
+4. Settings → Networking → Generate Domain, rồi gửi URL đó (hoặc `…/?room=ABCD`) cho cả nhóm. Railway tự gán `PORT`, không cần đặt biến nào.
+
+Fly.io:
+1. `fly launch --no-deploy` (nhận `Dockerfile`; đặt region `sin`, đừng thêm Postgres/Redis).
+2. Trong `fly.toml`: `internal_port = 3000`, `[http_service] auto_stop_machines = "off"`, `min_machines_running = 1`, kiểm tra sống `path = "/healthz"`.
+3. `fly scale count 1` rồi `fly deploy`.
+
+Trước buổi chơi: bật server trước 30 phút, đừng deploy trong ngày diễn ra sự kiện (xem checklist trong docs/WORKFLOW.md). Mất kết nối giữa trận: client tự vào lại cùng ghế trong 30 giây (F5 cũng được).
+
 ## Phân công
 
 Nhóm nhiều người, không chia mảng cố định. Ai rảnh thì nhận một bước trong docs/ROADMAP.md mà các bước phụ thuộc đã merge, ghi tên vào cột **Người nhận**, commit lên `main` rồi bắt đầu làm. Mỗi người giữ một bước cùng lúc.

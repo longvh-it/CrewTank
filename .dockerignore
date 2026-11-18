@@ -1,0 +1,10 @@
+**/node_modules
+client/dist
+.git
+.github
+.claude
+docs
+*.log
+.DS_Store
+Dockerfile
+.dockerignore

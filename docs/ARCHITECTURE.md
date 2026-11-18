@@ -177,6 +177,7 @@ export interface ClientToServer {
   'lobby:start': () => void;                                                   // chỉ chủ phòng
   'lobby:return': () => void;                                                  // chỉ chủ phòng, sau game:end: về sảnh chờ giữ đội/ghế
   'game:input': (input: PlayerInput) => void;
+  'net:ping': (ack: () => void) => void;                                       // đo ping: server gọi ack ngay
 }
 
 export interface ServerToClient {
@@ -191,5 +192,5 @@ export interface ServerToClient {
 Quy tắc:
 - Mọi payload từ client được parse bằng Zod trong `server/validate.ts`; không hợp lệ → bỏ qua (và ghi log khi chạy dev).
 - Giới hạn input tối đa 40 lần/s cho mỗi socket.
-- Mất kết nối: giữ ghế của người chơi 30 s (`connected: false`), vào lại bằng cùng `playerId`.
+- Mất kết nối: giữ ghế của người chơi 30 s (`connected: false`, điều khiển về trung tính), vào lại bằng cùng `playerId` ở bất kỳ phase nào (F5 giữa trận); client tự `room:join` lại bằng phòng lưu trong `sessionStorage`. Hết 30 s người chơi bị xóa hẳn (chủ phòng chuyển cho người kế tiếp, xe không còn ai thì bị xóa). Người mới chỉ vào được khi phòng ở sảnh chờ.
 - Mã phòng: 4 ký tự lấy từ `ABCDEFGHJKLMNPQRSTUVWXYZ23456789`. Phòng trống bị xóa sau 5 phút.

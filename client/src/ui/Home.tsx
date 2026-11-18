@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { PLAYER_NAME_MAX_LENGTH, ROOM_CODE_LENGTH } from '@crew-tanks/shared/constants';
 import type { GameSocket } from '../net/socket';
 import { getPlayerId } from '../net/playerId';
+import { saveRoom } from '../net/session';
 
 export function Home({ socket, connected }: { socket: GameSocket | null; connected: boolean }) {
   const [name, setName] = useState('');
@@ -9,10 +10,17 @@ export function Home({ socket, connected }: { socket: GameSocket | null; connect
   const [error, setError] = useState('');
 
   function createRoom() {
-    socket?.emit('room:create', name, getPlayerId(), (result) => setError(result.ok ? '' : result.error));
+    socket?.emit('room:create', name, getPlayerId(), (result) => {
+      if (result.ok) saveRoom({ code: result.code, name: name.trim() });
+      setError(result.ok ? '' : result.error);
+    });
   }
   function joinRoom() {
-    socket?.emit('room:join', code.trim().toUpperCase(), name, getPlayerId(), (result) => setError(result.ok ? '' : result.error));
+    const room = code.trim().toUpperCase();
+    socket?.emit('room:join', room, name, getPlayerId(), (result) => {
+      if (result.ok) saveRoom({ code: room, name: name.trim() });
+      setError(result.ok ? '' : result.error);
+    });
   }
 
   return (

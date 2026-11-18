@@ -12,6 +12,9 @@ export const INTERP_DELAY_MS = 100;
 export const INTERP_BUFFER_SIZE = 30; // snapshots kept (~1.5 s at 20 Hz)
 export const CLOCK_SYNC_SMOOTHING = 0.1; // EMA weight for the server-clock offset estimate
 export const RECONNECT_GRACE_SEC = 30;
+export const PING_INTERVAL_MS = 2000;
+export const REJOIN_RETRIES = 3; // F5 can race the old socket's disconnect event
+export const REJOIN_RETRY_MS = 700;
 
 // Rooms
 export const ROOM_CODE_LENGTH = 4;

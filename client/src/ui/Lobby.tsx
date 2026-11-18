@@ -48,6 +48,7 @@ export function Lobby({ lobby, playerId, socket }: Props) {
       >
         {p.name}
         {p.isHost ? ' ★' : ''}
+        {p.connected ? '' : ' (mất kết nối)'}
       </span>
     );
   }
