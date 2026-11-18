@@ -16,7 +16,7 @@ Test nhiều người chơi bằng 2 cửa sổ trình duyệt trở lên (một
 | 6a | Phòng theo mã + QR: RoomManager, Trang chủ | đã xong | 1 | 1 |
 | 6b | Phòng theo mã: thay phòng toàn cục | đã xong | 3, 6a | 2 |
 | 7a | Chia đội: `shared/teams.ts` + test | đã xong | 1 | 1 |
-| 7b | Sảnh chờ: giao diện, ghế, bắt đầu trận | — | 6b, 7a | 2 |
+| 7b | Sảnh chờ: giao diện, ghế, bắt đầu trận | longvh-it | 6b, 7a | 2 |
 | 8 | Tách người lái / pháo thủ | — | 5, 7 | 2 |
 | 9 | Team Deathmatch + bảng xếp hạng | — | 5, 7 | 3 |
 | 10 | Đạn đặc biệt, tăng tốc, sửa xe, đổi ghế | — | 8 | 3 |
@@ -83,7 +83,7 @@ Việc chuẩn bị không phụ thuộc bước nào, ai chưa nhận được 
   - `shared/teams.ts`: hàm thuần `autoBalance(players)` theo bảng trong DESIGN.md (6/7/8 người, và ít hơn để test) + kiểm tra hợp lệ khi chọn ghế. Vitest cho 2–8 người.
   - **Hoàn thành khi:** test pass cho 2–8 người, đúng bảng chia đội trong DESIGN.md.
 
-- [ ] **Bước 7b — Sảnh chờ: giao diện, ghế, bắt đầu trận** · Người nhận: —
+- [ ] **Bước 7b — Sảnh chờ: giao diện, ghế, bắt đầu trận** · Người nhận: longvh-it
   - Giao diện sảnh chờ: hai cột cho hai đội; mỗi xe hiện ghế lái và ghế pháo thủ; bấm vào ghế trống để ngồi; chủ phòng kéo thả được người chơi, bấm Tự chia đội, đổi cài đặt, Bắt đầu.
   - `lobby:start` → `game:start` cho mọi người; xe xuất hiện theo các `TankSlot` trong sảnh chờ.
   - **Hoàn thành khi:** test pass; với 4 cửa sổ trở lên, bấm Bắt đầu đưa mọi người vào trận với đúng các xe đã hiện trong sảnh chờ.
