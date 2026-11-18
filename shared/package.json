@@ -1,0 +1,13 @@
+{
+  "name": "@crew-tanks/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./types": "./types.ts",
+    "./constants": "./constants.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}

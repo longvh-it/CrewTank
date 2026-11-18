@@ -1,0 +1,21 @@
+{
+  "name": "crew-tanks",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.4.2",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel --filter ./server --filter ./client dev",
+    "build": "pnpm --filter ./client build",
+    "start": "pnpm --filter ./server start",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8",
+    "@types/node": "^20.17.0"
+  }
+}
