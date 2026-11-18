@@ -13,7 +13,7 @@ Test nhiều người chơi bằng 2 cửa sổ trình duyệt trở lên (một
 | 3 | Di chuyển do server quyết định | đã xong | 2 | 1 |
 | 4 | Map + va chạm | đã xong | 3 | 1 |
 | 5 | Bắn + máu + hồi sinh | đã xong | 4 | 2 |
-| 6a | Phòng theo mã + QR: RoomManager, Trang chủ | — | 1 | 1 |
+| 6a | Phòng theo mã + QR: RoomManager, Trang chủ | longvh-it | 1 | 1 |
 | 6b | Phòng theo mã: thay phòng toàn cục | — | 3, 6a | 2 |
 | 7a | Chia đội: `shared/teams.ts` + test | đã xong | 1 | 1 |
 | 7b | Sảnh chờ: giao diện, ghế, bắt đầu trận | — | 6b, 7a | 2 |
@@ -68,7 +68,7 @@ Việc chuẩn bị không phụ thuộc bước nào, ai chưa nhận được 
   - Vitest: góc bật khi chạm tường dọc/ngang, đạn ở tốc độ tối đa không xuyên qua tường dày 1 ô.
   - **Hoàn thành khi:** test pass; 2 cửa sổ có thể bắn hạ nhau và hồi sinh.
 
-- [ ] **Bước 6a — Phòng theo mã + QR: RoomManager, Trang chủ** · Người nhận: — · *làm được ngay sau bước 1*
+- [ ] **Bước 6a — Phòng theo mã + QR: RoomManager, Trang chủ** · Người nhận: longvh-it · *làm được ngay sau bước 1*
   - `RoomManager`: tạo phòng → mã 4 ký tự; vào phòng bằng mã hoặc `/?room=ABCD`; người tạo là chủ phòng; chủ phòng rời đi → người tiếp theo làm chủ phòng; phòng trống bị xóa sau 5 phút.
   - `playerId` cố định lưu trong `localStorage`, gửi kèm khi tạo/vào phòng.
   - Trang chủ: ô nhập tên, nút Tạo phòng, Vào phòng bằng mã. Hiển thị mã phòng + QR (`qrcode.react`).
