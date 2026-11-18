@@ -1,4 +1,3 @@
-import type { Server } from 'socket.io';
 import {
   BARREL_LENGTH,
   BULLET_DAMAGE,
@@ -22,9 +21,13 @@ import {
   stepBulletOnce,
   type BulletBody,
 } from '@crew-tanks/shared/physics';
-import type { BulletState, ClientToServer, GameEvent, GameSnapshot, PlayerInput, ServerToClient, TankState, TeamId } from '@crew-tanks/shared/types';
+import type { BulletState, GameEvent, GameSnapshot, PlayerInput, TankState, TeamId } from '@crew-tanks/shared/types';
 
-type GameIo = Server<ClientToServer, ServerToClient>;
+/** Where a game sends its output; the server wires this to one socket.io room. */
+export interface GameChannel {
+  state(snapshot: GameSnapshot): void;
+  event(e: GameEvent): void;
+}
 
 const STATS = TANK_STATS[1];
 const NO_INPUT: PlayerInput = { seq: 0, swap: false };
@@ -36,7 +39,7 @@ interface Bullet extends BulletBody {
   expiresAt: number;
 }
 
-/** One global room, one 1-crew tank per socket. Server owns positions, bullets, HP and respawns. */
+/** One game per room, one 1-crew tank per socket (step 7b: per TankSlot). Server owns positions, bullets, HP and respawns. */
 export class Game {
   private readonly tanks = new Map<string, TankState>();
   private readonly inputs = new Map<string, PlayerInput>();
@@ -49,13 +52,13 @@ export class Game {
   private snapshotTimer: NodeJS.Timeout | null = null;
 
   constructor(
-    private readonly io: GameIo,
+    private readonly channel: GameChannel,
     private readonly map: MapData,
   ) {}
 
   start(): void {
     this.tickTimer = setInterval(() => this.tick(1 / TICK_HZ), 1000 / TICK_HZ);
-    this.snapshotTimer = setInterval(() => this.io.emit('game:state', this.snapshot()), 1000 / SNAPSHOT_HZ);
+    this.snapshotTimer = setInterval(() => this.channel.state(this.snapshot()), 1000 / SNAPSHOT_HZ);
   }
 
   stop(): void {
@@ -214,7 +217,7 @@ export class Game {
   }
 
   private emit(e: GameEvent): void {
-    this.io.emit('game:event', e);
+    this.channel.event(e);
   }
 
   snapshot(): GameSnapshot {

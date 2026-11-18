@@ -1,9 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { Server } from 'socket.io';
 import { readFileSync } from 'node:fs';
 import { parseTiledMap } from '@crew-tanks/shared/map';
 import { RESPAWN_DELAY_SEC, SPAWN_INVULNERABLE_SEC, TANK_STATS, TICK_HZ } from '@crew-tanks/shared/constants';
-import type { ClientToServer, GameEvent, PlayerInput, ServerToClient } from '@crew-tanks/shared/types';
+import type { GameEvent, PlayerInput } from '@crew-tanks/shared/types';
 import { Game } from './Game';
 
 const map = parseTiledMap(JSON.parse(readFileSync(new URL('./maps/arena-01.json', import.meta.url), 'utf8')));
@@ -11,8 +10,7 @@ const DT = 1 / TICK_HZ;
 
 function setup() {
   const events: GameEvent[] = [];
-  const io = { emit: vi.fn((name: string, e: GameEvent) => name === 'game:event' && events.push(e)) };
-  const game = new Game(io as unknown as Server<ClientToServer, ServerToClient>, map);
+  const game = new Game({ state: vi.fn(), event: (e: GameEvent) => events.push(e) }, map);
   return { game, events };
 }
 const aimFire = (angle: number, fire: boolean): PlayerInput => ({ seq: 1, aim: { angle, fire, special: false }, swap: false });

@@ -14,7 +14,7 @@ Test nhiều người chơi bằng 2 cửa sổ trình duyệt trở lên (một
 | 4 | Map + va chạm | đã xong | 3 | 1 |
 | 5 | Bắn + máu + hồi sinh | đã xong | 4 | 2 |
 | 6a | Phòng theo mã + QR: RoomManager, Trang chủ | đã xong | 1 | 1 |
-| 6b | Phòng theo mã: thay phòng toàn cục | longvh-it | 3, 6a | 2 |
+| 6b | Phòng theo mã: thay phòng toàn cục | đã xong | 3, 6a | 2 |
 | 7a | Chia đội: `shared/teams.ts` + test | đã xong | 1 | 1 |
 | 7b | Sảnh chờ: giao diện, ghế, bắt đầu trận | — | 6b, 7a | 2 |
 | 8 | Tách người lái / pháo thủ | — | 5, 7 | 2 |
@@ -75,7 +75,7 @@ Việc chuẩn bị không phụ thuộc bước nào, ai chưa nhận được 
   - Chưa đụng vào `server/Game.ts` và phòng toàn cục (để phần 6b).
   - **Hoàn thành khi:** hai phòng tồn tại song song, người trong phòng này không thấy người phòng kia; quét QR bằng điện thoại mở đúng URL của phòng.
 
-- [ ] **Bước 6b — Phòng theo mã: thay phòng toàn cục** · Người nhận: longvh-it
+- [x] **Bước 6b — Phòng theo mã: thay phòng toàn cục** · Người nhận: đã xong
   - Thay phòng toàn cục ở bước 3: mỗi phòng có game loop riêng, snapshot chỉ phát tới người trong phòng.
   - **Hoàn thành khi:** hai phòng chơi song song, xe phòng này không xuất hiện ở phòng kia.
 
