@@ -21,6 +21,8 @@ import type { GameEvent, GameSnapshot, TankState } from '@crew-tanks/shared/type
 import type { GameSocket } from '../net/socket';
 import { InputController } from './InputController';
 import { Interpolator } from './Interpolator';
+import { inputForRole, type CrewRole } from './inputRole';
+import { useStore } from '../store';
 
 const OWN_COLOR = 0x2980b9;
 const OTHER_COLOR = 0xc0392b;
@@ -59,6 +61,7 @@ export class BattleScene extends Phaser.Scene {
     private readonly socket: GameSocket,
     private readonly map: MapData,
     private readonly ownTankId: string | null,
+    private readonly role: CrewRole,
   ) {
     super('battle');
   }
@@ -92,7 +95,7 @@ export class BattleScene extends Phaser.Scene {
   private sendInput(): void {
     const own = this.ownTankId ? this.views.get(this.ownTankId) : undefined;
     const origin = own ? { x: own.turret.x, y: own.turret.y } : { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 };
-    this.socket.emit('game:input', this.input$.read(origin));
+    this.socket.emit('game:input', inputForRole(this.input$.read(origin), this.role));
   }
 
   override update(): void {
@@ -103,6 +106,7 @@ export class BattleScene extends Phaser.Scene {
     for (const tank of snap.tanks) {
       seen.add(tank.id);
       this.applyTank(this.views.get(tank.id) ?? this.createView(tank), tank, now);
+      if (tank.id === this.ownTankId) useStore.getState().setHp(tank.hp, tank.maxHp);
     }
     for (const [id, view] of this.views) {
       if (seen.has(id)) continue;
