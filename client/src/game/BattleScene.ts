@@ -58,6 +58,7 @@ export class BattleScene extends Phaser.Scene {
   constructor(
     private readonly socket: GameSocket,
     private readonly map: MapData,
+    private readonly ownTankId: string | null,
   ) {
     super('battle');
   }
@@ -89,7 +90,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private sendInput(): void {
-    const own = this.socket.id ? this.views.get(this.socket.id) : undefined;
+    const own = this.ownTankId ? this.views.get(this.ownTankId) : undefined;
     const origin = own ? { x: own.turret.x, y: own.turret.y } : { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 };
     this.socket.emit('game:input', this.input$.read(origin));
   }
@@ -129,7 +130,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private createView(tank: TankState): TankView {
-    const color = tank.id === this.socket.id ? OWN_COLOR : OTHER_COLOR;
+    const color = tank.id === this.ownTankId ? OWN_COLOR : OTHER_COLOR;
     const body = this.add.rectangle(tank.x, tank.y, TANK_BODY_LENGTH, TANK_BODY_WIDTH, color).setStrokeStyle(2, 0x000000);
     const barrel = this.add.rectangle(0, 0, BARREL_LENGTH, BARREL_WIDTH, 0x2c3e50).setOrigin(0, 0.5);
     const dome = this.add.circle(0, 0, TURRET_RADIUS, 0x7f8c8d).setStrokeStyle(2, 0x000000);

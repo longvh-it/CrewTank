@@ -1,16 +1,12 @@
 import { useEffect, useRef } from 'react';
 import Phaser from 'phaser';
 import { WORLD_HEIGHT, WORLD_WIDTH } from '@crew-tanks/shared/constants';
-import { parseTiledMap } from '@crew-tanks/shared/map';
-import arena01 from '../../../server/maps/arena-01.json';
 import { BattleScene } from './BattleScene';
+import { getMap } from './maps';
 import type { GameSocket } from '../net/socket';
 
-// Same Tiled file the server simulates against (server/maps/arena-01.json).
-const MAP = parseTiledMap(arena01);
-
 /** Mounts one Phaser game; destroys it (and its canvas) on unmount. */
-export function GameCanvas({ socket }: { socket: GameSocket }) {
+export function GameCanvas({ socket, mapId, ownTankId }: { socket: GameSocket; mapId: string; ownTankId: string | null }) {
   const parentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -23,12 +19,12 @@ export function GameCanvas({ socket }: { socket: GameSocket }) {
       height: WORLD_HEIGHT,
       backgroundColor: '#3a5f3a',
       scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-      scene: [new BattleScene(socket, MAP)],
+      scene: [new BattleScene(socket, getMap(mapId), ownTankId)],
     });
     return () => {
       game.destroy(true);
     };
-  }, [socket]);
+  }, [socket, mapId, ownTankId]);
 
   return <div ref={parentRef} style={{ width: '100vw', height: '100vh' }} />;
 }

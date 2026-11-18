@@ -10,6 +10,7 @@ import {
   SPAWN_INVULNERABLE_SEC,
   TANK_STATS,
   TICK_HZ,
+  type TankStats,
 } from '@crew-tanks/shared/constants';
 import type { MapData } from '@crew-tanks/shared/map';
 import {
@@ -21,7 +22,14 @@ import {
   stepBulletOnce,
   type BulletBody,
 } from '@crew-tanks/shared/physics';
-import type { BulletState, GameEvent, GameSnapshot, PlayerInput, TankState, TeamId } from '@crew-tanks/shared/types';
+import type { BulletState, GameEvent, GameSnapshot, PlayerInput, Seat, TankState, TeamId } from '@crew-tanks/shared/types';
+
+export interface TankSpec {
+  id: string;
+  team: TeamId;
+  crew: 1 | 2;
+  hpBonus?: number;
+}
 
 /** Where a game sends its output; the server wires this to one socket.io room. */
 export interface GameChannel {
@@ -29,7 +37,6 @@ export interface GameChannel {
   event(e: GameEvent): void;
 }
 
-const STATS = TANK_STATS[1];
 const NO_INPUT: PlayerInput = { seq: 0, swap: false };
 
 interface Bullet extends BulletBody {
@@ -39,14 +46,14 @@ interface Bullet extends BulletBody {
   expiresAt: number;
 }
 
-/** One game per room, one 1-crew tank per socket (step 7b: per TankSlot). Server owns positions, bullets, HP and respawns. */
+/** One game per room, one tank per lobby TankSlot. Server owns positions, bullets, HP and respawns. */
 export class Game {
   private readonly tanks = new Map<string, TankState>();
   private readonly inputs = new Map<string, PlayerInput>();
+  private readonly stats = new Map<string, TankStats>();
   private readonly spawnCount = { red: 0, blue: 0 };
   private readonly bullets: Bullet[] = [];
   private readonly lastShotAt = new Map<string, number>();
-  private nextTeam = 0;
   private nextBulletId = 1;
   private tickTimer: NodeJS.Timeout | null = null;
   private snapshotTimer: NodeJS.Timeout | null = null;
@@ -67,9 +74,11 @@ export class Game {
     this.tickTimer = this.snapshotTimer = null;
   }
 
-  addTank(id: string): void {
-    const team = (this.nextTeam++ % 2 === 0 ? 'red' : 'blue') as TeamId;
-    const points = this.map.spawns[team];
+  /** Add a tank for one lobby slot. `hpBonus` is a fraction (0.2 = +20% HP). */
+  addTank({ id, team, crew, hpBonus = 0 }: TankSpec): void {
+    const stats = TANK_STATS[crew];
+    const maxHp = Math.round(stats.maxHp * (1 + hpBonus));
+    this.stats.set(id, stats);
     this.tanks.set(id, {
       id,
       team,
@@ -77,11 +86,11 @@ export class Game {
       y: 0,
       bodyAngle: 0,
       turretAngle: 0,
-      hp: STATS.maxHp,
-      maxHp: STATS.maxHp,
+      hp: maxHp,
+      maxHp,
       alive: true,
       respawnAt: null,
-      crew: 1,
+      crew,
       specialAmmo: 0,
       specialKind: null,
       boostReadyAt: 0,
@@ -104,6 +113,7 @@ export class Game {
 
   removeTank(id: string): void {
     this.tanks.delete(id);
+    this.stats.delete(id);
     this.inputs.delete(id);
     this.lastShotAt.delete(id);
   }
@@ -122,15 +132,32 @@ export class Game {
     if (t) t.invulnerableUntil = until;
   }
 
-  setInput(id: string, input: PlayerInput): void {
-    if (this.tanks.has(id)) this.inputs.set(id, input);
+  /**
+   * Store a player's input for their tank. In a 2-crew tank `move` only comes from the driver
+   * and `aim` only from the gunner; a solo tank takes both from its one player.
+   */
+  setInput(tankId: string, seat: Seat, input: PlayerInput): void {
+    const tank = this.tanks.get(tankId);
+    if (!tank) return;
+    if (tank.crew === 1) {
+      this.inputs.set(tankId, input);
+      return;
+    }
+    const prev = this.inputs.get(tankId) ?? NO_INPUT;
+    const next: PlayerInput = { ...prev, seq: input.seq };
+    if (seat === 'driver') {
+      if (input.move) next.move = input.move;
+      else delete next.move;
+    } else if (input.aim) next.aim = input.aim;
+    else delete next.aim;
+    this.inputs.set(tankId, next);
   }
 
   tick(dt: number, now: number = Date.now()): void {
     this.respawnDue(now);
     const all = [...this.tanks.values()].filter((t) => t.alive);
     for (const tank of all) {
-      const pose = moveTank(tank, this.inputs.get(tank.id) ?? NO_INPUT, STATS, dt, this.map.grid);
+      const pose = moveTank(tank, this.inputs.get(tank.id) ?? NO_INPUT, this.statsOf(tank.id), dt, this.map.grid);
       tank.x = pose.x;
       tank.y = pose.y;
       tank.bodyAngle = pose.bodyAngle;
@@ -149,6 +176,10 @@ export class Game {
     this.stepBullets(dt, now);
   }
 
+  private statsOf(tankId: string): TankStats {
+    return this.stats.get(tankId) ?? TANK_STATS[1];
+  }
+
   private respawnDue(now: number): void {
     for (const tank of this.tanks.values()) {
       if (tank.alive || tank.respawnAt === null || now < tank.respawnAt) continue;
@@ -163,7 +194,7 @@ export class Game {
   private maybeFire(tank: TankState, now: number): void {
     if (!this.inputs.get(tank.id)?.aim?.fire) return;
     const last = this.lastShotAt.get(tank.id) ?? -Infinity;
-    if (now - last < STATS.reloadSec * 1000) return;
+    if (now - last < this.statsOf(tank.id).reloadSec * 1000) return;
     this.lastShotAt.set(tank.id, now);
     const dx = Math.cos(tank.turretAngle);
     const dy = Math.sin(tank.turretAngle);

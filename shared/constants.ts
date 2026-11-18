@@ -101,6 +101,8 @@ export const DEFAULT_TIME_LIMIT_SEC = 8 * 60;
 export const TIME_LIMIT_MIN_SEC = 3 * 60;
 export const TIME_LIMIT_MAX_SEC = 15 * 60;
 export const DEFAULT_MAP_ID = 'arena-01';
+export const AVAILABLE_MAP_IDS: readonly string[] = ['arena-01']; // arena-02 arrives in step 11
+export const MAX_TANKS_PER_TEAM = 4; // 8 players max, 2 per tank, 2 teams
 
 // Awards (MVP score)
 export const MVP_POINTS_PER_KILL = 3;
