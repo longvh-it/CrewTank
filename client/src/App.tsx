@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createSocket } from './net/socket';
+import { GameCanvas } from './game/GameCanvas';
 
 export function App() {
   const [socketId, setSocketId] = useState<string | null>(null);
@@ -13,5 +14,12 @@ export function App() {
     };
   }, []);
 
-  return <p>{socketId ? `connected: ${socketId}` : 'connecting…'}</p>;
+  return (
+    <>
+      <GameCanvas />
+      <p style={{ position: 'fixed', top: 8, left: 8, margin: 0, color: '#fff' }}>
+        {socketId ? `connected: ${socketId}` : 'connecting…'}
+      </p>
+    </>
+  );
 }

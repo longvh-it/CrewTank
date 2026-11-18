@@ -20,6 +20,17 @@ export const EMPTY_ROOM_TTL_SEC = 5 * 60;
 export const TILE_SIZE = 32;
 export const TANK_RADIUS = 18;
 export const BULLET_MAX_SUBSTEP = 8;
+export const MAP_COLS = 40;
+export const MAP_ROWS = 24;
+export const WORLD_WIDTH = MAP_COLS * TILE_SIZE;
+export const WORLD_HEIGHT = MAP_ROWS * TILE_SIZE;
+
+// Placeholder tank graphics (until Kenney sprites in step 11)
+export const TANK_BODY_LENGTH = 40;
+export const TANK_BODY_WIDTH = 30;
+export const TURRET_RADIUS = 9;
+export const BARREL_LENGTH = 26;
+export const BARREL_WIDTH = 6;
 
 // Tank stats by crew size
 export interface TankStats {
