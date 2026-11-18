@@ -9,7 +9,7 @@ Test nhiều người chơi bằng 2 cửa sổ trình duyệt trở lên (một
 | # | Bước | Người nhận | Phụ thuộc | Tuần |
 |---|---|---|---|---|
 | 1 | Khung repo | đã xong | — | 1 |
-| 2 | Phaser trong React | longvh-it | 1 | 1 |
+| 2 | Phaser trong React | đã xong | 1 | 1 |
 | 3 | Di chuyển do server quyết định | — | 2 | 1 |
 | 4 | Map + va chạm | — | 3 | 1 |
 | 5 | Bắn + máu + hồi sinh | — | 4 | 2 |
@@ -41,7 +41,7 @@ Việc chuẩn bị không phụ thuộc bước nào, ai chưa nhận được 
   - GitHub Actions `.github/workflows/ci.yml`: cài đặt, chạy `pnpm typecheck`, `pnpm test` cho mọi PR.
   - **Hoàn thành khi:** `pnpm dev` chạy được, trang hiện id đã kết nối, `pnpm typecheck && pnpm test` pass, CI xanh.
 
-- [ ] **Bước 2 — Phaser trong React** · Người nhận: longvh-it
+- [x] **Bước 2 — Phaser trong React** · Người nhận: đã xong
   - `GameCanvas.tsx` gắn một game Phaser 3, hủy nó khi unmount.
   - `BattleScene` vẽ một xe tăng tạm (hình chữ nhật thân xe + nòng pháo), điều khiển cục bộ bằng WASD; tháp pháo xoay theo chuột, độc lập với thân xe.
   - `InputController.ts` chuyển bàn phím/chuột thành `PlayerInput`.
