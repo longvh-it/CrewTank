@@ -30,7 +30,9 @@ Gặp lỗi: `/fix <mô tả lỗi>`.
 | `docs/DESIGN.md` | Luật chơi, chỉ số |
 | `docs/ARCHITECTURE.md` | Kiến trúc, cấu trúc repo, giao thức socket, quy tắc sửa file |
 | `docs/ROADMAP.md` | 12 bước, người nhận, tiêu chí hoàn thành |
-| `docs/WORKFLOW.md` | Quy trình git/PR cho nhóm nhiều người, checklist trước sự kiện |
+| `docs/WORKFLOW.md` | Quy trình git/PR cho nhóm nhiều người, cách nhận và chia việc, checklist trước sự kiện |
+| `docs/CHECKLIST.md` | Checklist phải tick hết trước khi coi một bước là xong |
+| `.github/pull_request_template.md` | Mẫu mô tả PR, có sẵn checklist rút gọn |
 | `.claude/commands/step.md` | Lệnh `/step <số>` |
 | `.claude/commands/fix.md` | Lệnh `/fix <lỗi>` |
 
