@@ -8,6 +8,7 @@
     "./constants": "./constants.ts",
     "./physics": "./physics.ts",
     "./map": "./map.ts",
+    "./lobby": "./lobby.ts",
     "./teams": "./teams.ts"
   },
   "scripts": {

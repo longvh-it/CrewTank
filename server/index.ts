@@ -3,11 +3,11 @@ import { createServer } from 'node:http';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { Server } from 'socket.io';
-import type { ClientToServer, ServerToClient } from '@crew-tanks/shared/types';
-import { DEFAULT_MAP_ID, SERVER_PORT } from '@crew-tanks/shared/constants';
-import { parseTiledMap } from '@crew-tanks/shared/map';
+import type { ClientToServer, LobbyState, ServerToClient } from '@crew-tanks/shared/types';
+import { SERVER_PORT } from '@crew-tanks/shared/constants';
+import { parseTiledMap, type MapData } from '@crew-tanks/shared/map';
 import { Game } from './Game';
-import { parsePlayerInput, parseRoomCode, parseRoomPlayer, RateLimiter } from './validate';
+import { parsePlayerInput, parseRoomCode, parseRoomPlayer, parseSeatMove, parseSeatPick, parseSettings, RateLimiter } from './validate';
 import { RoomManager } from './RoomManager';
 
 const app = express();
@@ -18,17 +18,25 @@ const io = new Server<ClientToServer, ServerToClient>(httpServer);
 const clientDist = fileURLToPath(new URL('../client/dist', import.meta.url));
 if (existsSync(clientDist)) app.use(express.static(clientDist));
 
-const mapFile = fileURLToPath(new URL(`./maps/${DEFAULT_MAP_ID}.json`, import.meta.url));
-const map = parseTiledMap(JSON.parse(readFileSync(mapFile, 'utf8')));
-// One Game per room; its snapshots and events go only to that room's socket.io channel.
+const maps = new Map<string, MapData>();
+function loadMap(mapId: string): MapData {
+  let map = maps.get(mapId);
+  if (!map) {
+    const file = fileURLToPath(new URL(`./maps/${mapId}.json`, import.meta.url));
+    map = parseTiledMap(JSON.parse(readFileSync(file, 'utf8')));
+    maps.set(mapId, map);
+  }
+  return map;
+}
+// One Game per room (created when the host starts the match); its snapshots and events go only to that room.
 const rooms = new RoomManager(
-  (code) =>
+  (code, mapId) =>
     new Game(
       {
         state: (snapshot) => io.to(code).emit('game:state', snapshot),
         event: (e) => io.to(code).emit('game:event', e),
       },
-      map,
+      loadMap(mapId),
     ),
 );
 
@@ -41,7 +49,6 @@ io.on('connection', (socket) => {
     if (!player || roomCode) { ack({ ok: false, error: 'Thông tin không hợp lệ hoặc bạn đã ở trong phòng.' }); return; }
     const state = rooms.create(player.name, player.playerId, socket.id);
     roomCode = state.code;
-    rooms.gameOf(state.code)?.addTank(socket.id);
     void socket.join(state.code);
     ack({ ok: true, code: state.code });
     io.to(state.code).emit('lobby:state', state);
@@ -54,22 +61,49 @@ io.on('connection', (socket) => {
     const state = rooms.join(validCode, player.name, player.playerId, socket.id);
     if (!state) { ack({ ok: false, error: 'Phòng không tồn tại hoặc người chơi đã ở trong phòng.' }); return; }
     roomCode = validCode;
-    rooms.gameOf(validCode)?.addTank(socket.id);
     void socket.join(validCode);
     ack({ ok: true });
     io.to(validCode).emit('lobby:state', state);
+  });
+  const publish = (state: LobbyState | null) => {
+    if (state) io.to(state.code).emit('lobby:state', state);
+  };
+  socket.on('lobby:pickSeat', (tankId, seat) => {
+    const pick = parseSeatPick(tankId, seat);
+    if (roomCode && pick) publish(rooms.pickSeat(roomCode, socket.id, pick.tankId, pick.seat));
+  });
+  socket.on('lobby:leaveSeat', () => {
+    if (roomCode) publish(rooms.leaveSeat(roomCode, socket.id));
+  });
+  socket.on('lobby:movePlayer', (playerId, tankId, seat) => {
+    const move = parseSeatMove(playerId, tankId, seat);
+    if (roomCode && move) publish(rooms.movePlayer(roomCode, socket.id, move.playerId, move.tankId, move.seat));
+  });
+  socket.on('lobby:autoBalance', () => {
+    if (roomCode) publish(rooms.autoBalance(roomCode, socket.id));
+  });
+  socket.on('lobby:settings', (payload) => {
+    const patch = parseSettings(payload);
+    if (roomCode && patch) publish(rooms.setSettings(roomCode, socket.id, patch));
+  });
+  socket.on('lobby:start', () => {
+    if (!roomCode) return;
+    const state = rooms.start(roomCode, socket.id);
+    if (!state) return;
+    io.to(roomCode).emit('game:start', state.settings.mapId);
+    publish(state);
   });
   const limiter = new RateLimiter();
   socket.on('game:input', (payload) => {
     if (!roomCode || !limiter.allow(Date.now())) return;
     const input = parsePlayerInput(payload);
-    if (input) rooms.gameOf(roomCode)?.setInput(socket.id, input);
+    const seat = rooms.seatOf(roomCode, socket.id);
+    if (input && seat) rooms.gameOf(roomCode)?.setInput(seat.tankId, seat.seat, input);
     else if (process.env.NODE_ENV !== 'production') console.warn(`invalid game:input from ${socket.id}`);
   });
   socket.on('disconnect', (reason) => {
     if (roomCode) {
       const state = rooms.leave(roomCode, socket.id);
-      rooms.gameOf(roomCode)?.removeTank(socket.id);
       if (state) io.to(roomCode).emit('lobby:state', state);
     }
     console.log(`disconnected ${socket.id} (${reason})`);

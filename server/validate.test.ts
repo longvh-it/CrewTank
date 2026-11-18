@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parsePlayerInput, RateLimiter } from './validate';
+import { parsePlayerInput, parseSeatMove, parseSeatPick, parseSettings, RateLimiter } from './validate';
 
 const ok = {
   seq: 1,
@@ -32,5 +32,23 @@ describe('RateLimiter', () => {
     const rl = new RateLimiter(3);
     expect([0, 1, 2, 3].map(() => rl.allow(100))).toEqual([true, true, true, false]);
     expect(rl.allow(1200)).toBe(true);
+  });
+});
+
+describe('lobby payloads', () => {
+  const id = '123e4567-e89b-42d3-a456-426614174000';
+  it('parses seat picks and moves', () => {
+    expect(parseSeatPick('red-1', 'driver')).toEqual({ tankId: 'red-1', seat: 'driver' });
+    expect(parseSeatPick('red-1', 'pilot')).toBeNull();
+    expect(parseSeatPick(5, 'driver')).toBeNull();
+    expect(parseSeatMove(id, 'blue-2', 'gunner')).toEqual({ playerId: id, tankId: 'blue-2', seat: 'gunner' });
+    expect(parseSeatMove('nope', 'blue-2', 'gunner')).toBeNull();
+  });
+  it('parses settings within limits only', () => {
+    expect(parseSettings({ killLimit: 10 })).toEqual({ killLimit: 10 });
+    expect(parseSettings({ killLimit: 1 })).toBeNull();
+    expect(parseSettings({ timeLimitSec: 10 })).toBeNull();
+    expect(parseSettings({ mapId: 'nope' })).toBeNull();
+    expect(parseSettings({ mapId: 'arena-01', extra: 1 })).toBeNull();
   });
 });

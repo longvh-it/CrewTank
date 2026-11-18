@@ -1,6 +1,16 @@
 import { z } from 'zod';
-import { MAX_INPUTS_PER_SEC, PLAYER_NAME_MAX_LENGTH, ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH } from '@crew-tanks/shared/constants';
-import type { PlayerInput } from '@crew-tanks/shared/types';
+import {
+  AVAILABLE_MAP_IDS,
+  KILL_LIMIT_MAX,
+  KILL_LIMIT_MIN,
+  MAX_INPUTS_PER_SEC,
+  PLAYER_NAME_MAX_LENGTH,
+  ROOM_CODE_ALPHABET,
+  ROOM_CODE_LENGTH,
+  TIME_LIMIT_MAX_SEC,
+  TIME_LIMIT_MIN_SEC,
+} from '@crew-tanks/shared/constants';
+import type { LobbySettings, PlayerInput, Seat } from '@crew-tanks/shared/types';
 
 const axis = z.union([z.literal(-1), z.literal(0), z.literal(1)]);
 const roomPlayerSchema = z.object({ name: z.string().trim().min(1).max(PLAYER_NAME_MAX_LENGTH), playerId: z.string().uuid() });
@@ -50,4 +60,37 @@ export class RateLimiter {
     this.count += 1;
     return this.count <= this.maxPerSec;
   }
+}
+
+const seatSchema = z.enum(['driver', 'gunner']);
+const tankIdSchema = z.string().min(1).max(16);
+const seatPickSchema = z.object({ tankId: tankIdSchema, seat: seatSchema });
+const seatMoveSchema = z.object({ playerId: z.string().uuid(), tankId: tankIdSchema, seat: seatSchema });
+const settingsSchema = z
+  .object({
+    killLimit: z.number().int().min(KILL_LIMIT_MIN).max(KILL_LIMIT_MAX),
+    timeLimitSec: z.number().int().min(TIME_LIMIT_MIN_SEC).max(TIME_LIMIT_MAX_SEC),
+    mapId: z.string().refine((id) => AVAILABLE_MAP_IDS.includes(id)),
+  })
+  .partial()
+  .strict();
+
+export function parseSeatPick(tankId: unknown, seat: unknown): { tankId: string; seat: Seat } | null {
+  const r = seatPickSchema.safeParse({ tankId, seat });
+  return r.success ? r.data : null;
+}
+
+export function parseSeatMove(playerId: unknown, tankId: unknown, seat: unknown): { playerId: string; tankId: string; seat: Seat } | null {
+  const r = seatMoveSchema.safeParse({ playerId, tankId, seat });
+  return r.success ? r.data : null;
+}
+
+export function parseSettings(payload: unknown): Partial<LobbySettings> | null {
+  const r = settingsSchema.safeParse(payload);
+  if (!r.success) return null;
+  const out: Partial<LobbySettings> = {};
+  if (r.data.killLimit !== undefined) out.killLimit = r.data.killLimit;
+  if (r.data.timeLimitSec !== undefined) out.timeLimitSec = r.data.timeLimitSec;
+  if (r.data.mapId !== undefined) out.mapId = r.data.mapId;
+  return out;
 }
